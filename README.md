@@ -1,8 +1,8 @@
-# llm-rpg
+# 📖 LLM RP
 
-Your Custom RPG on Mac and Linux (for now).
+Your Custom Role Play with AI on Mac and Linux (for now).
 
-## Config the RPG
+## 🛠️ Setup
 
 Each time llama.cpp is updated:
 
@@ -10,7 +10,7 @@ Each time llama.cpp is updated:
 bash scripts/init.sh
 ```
 
-## Start the RPG
+## 👉🏻 Start
 
 Each time you want to play the game:
 
@@ -18,7 +18,9 @@ Each time you want to play the game:
 bash scripts/start.sh
 ```
 
-## Exemple output
+## 📎 Exemple
+
+Result:
 
 ```bash
 Please make sure that you are ready for this game.
@@ -48,7 +50,7 @@ As you turn to leave, the door creaks open on its own, as if someone or somethin
 What do you want to do next?
 ```
 
-## llama.cpp model used
+Model used:
 
 ```bash
 ➜  llm-rpg git:(main) ls -lR llama.cpp/models
