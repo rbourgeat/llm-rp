@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>LLM Role Play</title>
+</head>
+<body>
+    <h1>LLM Role Play</h1>
+    <button id="runButton">Run Llama</button>
+    <div id="output"></div>
+
+    <script>
+        document.getElementById('runButton').addEventListener('click', async () => {
+            const response = await fetch('/run-llama', { method: 'POST' });
+            const data = await response.json();
+            document.getElementById('output').innerText = data.output;
+        });
+    </script>
+    <style>
+        body {
+          background-color: black;
+          color: white;
+        }
+        
+        h1 {
+          color: grey;
+          margin-left: 40px;
+        }
+    </style>
+</body>
+</html>

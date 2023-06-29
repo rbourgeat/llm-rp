@@ -1,5 +1,5 @@
 
-prompt_file="RPG_NSFW.txt"
+prompt_file="RP_NSFW.txt"
 model_file="ggml-vic13b-q4_0.bin"
 
 if [[ $(uname) == "Darwin" ]] && [[ $(uname -m) == "arm64" ]]; then
