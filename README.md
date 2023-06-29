@@ -22,7 +22,7 @@ bash scripts/start.sh
 
 Result:
 
-```bash
+```
 Please make sure that you are ready for this game.
 USER: yes
 

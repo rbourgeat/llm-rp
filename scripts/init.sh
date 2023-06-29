@@ -3,10 +3,10 @@ cd llama.cpp
 
 if [[ $(uname) == "Darwin" ]] && [[ $(uname -m) == "arm64" ]]; then
 
-LLAMA_METAL=1 make
+make clean && LLAMA_METAL=1 make
 
 else
 
-make
+make clean && make
 
 fi
