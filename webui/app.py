@@ -3,6 +3,8 @@ import subprocess
 import threading
 from queue import Queue, Empty
 import os
+import platform
+import sys
 
 app = Flask(__name__)
 output_queue = Queue()
@@ -35,6 +37,7 @@ def execute():
 def get_output():
     try:
         output = output_queue.get(timeout=1.0)
+        output = '<p>' + output + '</p>'
         if "USER:" in output:
             output = ''
     except Empty:
@@ -45,7 +48,7 @@ def get_output():
 def send_input():
     input_text = request.form['input']
     input_queue.put(input_text + '\n')
-    output_queue.put(input_text + '\n')
+    output_queue.put('<p id="user-message">' + input_text + '</p>')
     return jsonify(result='success')
 
 @app.route('/check_llama_cpp', methods=['GET'])
@@ -58,7 +61,16 @@ def check_llama_cpp():
 
 def compile(filename):
     if filename == "llama.cpp/main":
-        bash_command = 'make -C llama.cpp/ clean && LLAMA_METAL=1 make -C llama.cpp/'
+        system = platform.system()
+        if system == 'Darwin':
+            print("Build on macOS with METAL for GPU")
+            bash_command = 'make -C llama.cpp/ clean && LLAMA_METAL=1 make -C llama.cpp/'
+        elif system == 'Linux':
+            print("Build on Linux for CPU")
+            bash_command = 'make -C llama.cpp/ clean && make -C llama.cpp/'
+        else:
+            print("Running on an unsupported operating system")
+            sys.exit()
         subprocess.run(bash_command, shell=True, check=True, capture_output=True)
 
 def process_input():

@@ -15,7 +15,7 @@ function pollOutput() {
     $.get('/get_output', function(data) {
         var output = data.output;
         if (output) {
-            $('#output').append('<p>' + output + '</p>');
+            $('#output').append(output);
             $('#output').scrollTop($('#output')[0].scrollHeight);
         }
         if (isRunning) {

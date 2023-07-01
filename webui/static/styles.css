@@ -82,3 +82,12 @@ body {
     float: right;
     margin-right: 10px;
 }
+
+#user-message {
+    padding: 10px;
+    margin: 0px;
+    background-color: #555;
+    color: white;
+    border-radius: 25px;
+    display: inline-block;
+}
