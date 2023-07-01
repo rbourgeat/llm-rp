@@ -2,6 +2,8 @@
 
 Your Custom Role Play with AI on Mac and Linux (for now).
 
+![LLM RP](exemple.gif)
+
 ## 🛠️ Setup
 
 Each time llama.cpp is updated:

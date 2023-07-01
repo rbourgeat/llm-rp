@@ -1,29 +1,61 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, jsonify
 import subprocess
+import threading
+from queue import Queue, Empty
 
 app = Flask(__name__)
-
-def parse(string):
-    split_string = string.split("[end of text]")
-    result = split_string[0]
-    split_string = result.split("===")
-    result = split_string[1]
-    return result
+output_queue = Queue()
+input_queue = Queue()
+process = None
 
 @app.route('/')
 def index():
     return render_template('index.html')
 
-@app.route('/run-llama', methods=['POST'])
-def run_llama():
+@app.route('/execute', methods=['POST'])
+def execute():
+    command = request.form['command']
+
+    def run_script():
+        global process
+        process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE, universal_newlines=True)
+        while True:
+            line = process.stdout.readline()
+            if not line:
+                break
+            output_queue.put(line.strip())
+        process.wait()
+
+    thread = threading.Thread(target=run_script)
+    thread.start()
+    return jsonify(result='started')
+
+@app.route('/get_output')
+def get_output():
     try:
-        command = './llama.cpp/main -m ./llama.cpp/models/ggml-vic13b-q4_0.bin -ngl 1 --repeat_penalty 1.1 -f prompts/RP_NSFW.txt -r "USER: "'
-        output = subprocess.check_output(command, shell=True, stderr=subprocess.STDOUT)
-        response = parse(output.decode('utf-8'))
-        return {'output': response}
-    except subprocess.CalledProcessError as e:
-        error_message = e.output.decode('utf-8')
-        return {'error': error_message}, 500
+        output = output_queue.get(timeout=1.0)
+        if "USER:" in output:
+            output = ''
+    except Empty:
+        output = ''
+    return jsonify(output=output)
+
+@app.route('/send_input', methods=['POST'])
+def send_input():
+    input_text = request.form['input']
+    input_queue.put(input_text + '\n')
+    output_queue.put(input_text + '\n')
+    return jsonify(result='success')
+
+def process_input():
+    global process
+    while True:
+        if process is not None:
+            input_text = input_queue.get()
+            process.stdin.write(input_text)
+            process.stdin.flush()
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    input_thread = threading.Thread(target=process_input)
+    input_thread.start()
+    app.run()
