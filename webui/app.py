@@ -1,7 +1,8 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, after_this_request
 import subprocess
 import threading
 from queue import Queue, Empty
+import os
 
 app = Flask(__name__)
 output_queue = Queue()
@@ -46,6 +47,19 @@ def send_input():
     input_queue.put(input_text + '\n')
     output_queue.put(input_text + '\n')
     return jsonify(result='success')
+
+@app.route('/check_llama_cpp', methods=['GET'])
+def check_llama_cpp():
+    filename = 'llama.cpp/main'
+    exists = os.path.exists(filename)
+    if not exists:
+        compile(filename)
+    return jsonify(exists=exists)
+
+def compile(filename):
+    if filename == "llama.cpp/main":
+        bash_command = 'make -C llama.cpp/ clean && LLAMA_METAL=1 make -C llama.cpp/'
+        subprocess.run(bash_command, shell=True, check=True, capture_output=True)
 
 def process_input():
     global process

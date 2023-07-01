@@ -36,6 +36,12 @@ function reloadPage() {
 
 $(document).ready(function() {
     $('#input-form').hide();
+    $('#start-button').hide();
+
+    $.get('/check_llama_cpp', function(data) {
+        $('#start-button').show();
+        $('#status-container').hide();
+    });
 
     $('#start-button').click(function() {
         $(this).hide();
