@@ -1,6 +1,6 @@
 # 📖 LLM RP
 
-Your Custom Role Play with AI on Mac and Linux (for now).
+Your Custom Offline Role Play with AI on Mac and Linux (for now).
 
 ![LLM RP](llm-rp.png)
 
@@ -8,8 +8,8 @@ Your Custom Role Play with AI on Mac and Linux (for now).
 
 For now:
 - MacOS or Linux
-- Python3.7
-- Install `WizardLM-13B-V1.0-Uncensored/ggml-model-q4_0.bin` model in `llama.cpp/models`.
+- Python >= 3.7
+- `pip install flask gitpython psutil`
 
 ## 👉🏻 Start
 
@@ -19,19 +19,27 @@ Each time you want to run the game:
 python3 app/run.py
 ```
 
+The first time you load the app you will wait a while,
+because the program will download, export and quantize 
+the better llama model for your config.
+
 Next open your browser at http://127.0.0.1:5000
 
 Click on the 🗑️ for reset le Role Play
 
-You can customize the prompt `prompts/RolePlayV1.txt`
+You can customize the prompt `prompts/RolePlay.txt`
 
 ## 📝 Todo
 
 - 💾 Create a persistent role play (with save system)
 - 🖼️ Adding Stable Diffusion
 - 🛠️ Compile for GPU Linux / GPU Windows
-- 📎 Adding model downloader, installer and quantizer
 - 🎤 Adding [whisper.cpp](https://github.com/ggerganov/whisper.cpp)
 - 🔉 Adding [Bark](https://github.com/suno-ai/bark) or an other Text-Prompted Generative Audio Model
 - 🔥 Doing a better interface
 - 🔒 Lock user input when model generating response
+
+## 🔎 Sources
+
+- [llama.cpp](https://github.com/ggerganov/llama.cpp)
+- [WizardLM](https://huggingface.co/ehartford/)
