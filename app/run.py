@@ -44,30 +44,30 @@ def execute():
         Runs the script in a separate thread.
         """
         global PROCESS # pylint: disable=global-statement
-        PROCESS = subprocess.Popen(
+        with subprocess.Popen(
             command,
             shell=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             stdin=subprocess.PIPE,
             universal_newlines=True,
-        )
-        current_word = ''
-        while True:
-            char = PROCESS.stdout.read(1)
-            if not char:
-                break
-            if char == '\n':
-                output_queue.put(current_word + '<br>')
-                current_word = ''
-            elif char.isspace():
-                if current_word:
-                    output_queue.put(current_word)
-                    output_queue.put(' ')
-                current_word = ''
-            else:
-                current_word += char
-        PROCESS.wait()
+        ) as PROCESS:
+            current_word = ''
+            while True:
+                char = PROCESS.stdout.read(1)
+                if not char:
+                    break
+                if char == '\n':
+                    output_queue.put(current_word + '<br>')
+                    current_word = ''
+                elif char.isspace():
+                    if current_word:
+                        output_queue.put(current_word)
+                        output_queue.put(' ')
+                    current_word = ''
+                else:
+                    current_word += char
+            PROCESS.wait()
 
     thread = threading.Thread(target=run_script)
     thread.start()
