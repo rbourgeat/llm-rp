@@ -5,6 +5,7 @@ from queue import Queue, Empty
 import os
 import platform
 import sys
+import webbrowser
 
 app = Flask(__name__)
 output_queue = Queue()
@@ -22,12 +23,23 @@ def execute():
     def run_script():
         global process
         process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE, universal_newlines=True)
+        current_word = ""
         while True:
-            line = process.stdout.readline()
-            if not line:
+            char = process.stdout.read(1)
+            if not char:
                 break
-            output_queue.put(line.strip())
+            if char == '\n':  # Check if char is a newline
+                output_queue.put(current_word + '<br>')  # Add current_word and newline
+                current_word = ""
+            elif char.isspace():
+                if current_word:
+                    output_queue.put(current_word)
+                    output_queue.put(' ')
+                current_word = ""
+            else:
+                current_word += char
         process.wait()
+
 
     thread = threading.Thread(target=run_script)
     thread.start()
@@ -37,7 +49,6 @@ def execute():
 def get_output():
     try:
         output = output_queue.get(timeout=1.0)
-        output = '<p>' + output + '</p>'
         if "USER:" in output:
             output = ''
     except Empty:
@@ -48,7 +59,7 @@ def get_output():
 def send_input():
     input_text = request.form['input']
     input_queue.put(input_text + '\n')
-    output_queue.put('<p id="user-message">' + input_text + '</p>')
+    output_queue.put('<p id="user-message">' + input_text + '</p><br>')
     return jsonify(result='success')
 
 @app.route('/check_llama_cpp', methods=['GET'])
@@ -75,6 +86,7 @@ def compile(filename):
 
 def process_input():
     global process
+    webbrowser.open("http://127.0.0.1:5000")
     while True:
         if process is not None:
             input_text = input_queue.get()

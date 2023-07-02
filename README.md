@@ -7,6 +7,8 @@ Your Custom Role Play with AI on Mac and Linux (for now).
 ## 📝 Requirement
 
 For now:
+- MacOS or Linux
+- Python3.7
 - Install `WizardLM-13B-V1.0-Uncensored/ggml-model-q4_0.bin` model in `llama.cpp/models`.
 
 ## 👉🏻 Start
@@ -14,7 +16,7 @@ For now:
 Each time you want to run the game:
 
 ```bash
-python3 webui/app.py
+python3 app/run.py
 ```
 
 Next open your browser at http://127.0.0.1:5000
@@ -32,3 +34,4 @@ You can customize the prompt `prompts/RolePlayV1.txt`
 - 🎤 Adding [whisper.cpp](https://github.com/ggerganov/whisper.cpp)
 - 🔉 Adding [Bark](https://github.com/suno-ai/bark) or an other Text-Prompted Generative Audio Model
 - 🔥 Doing a better interface
+- 🔒 Lock user input when model generating response

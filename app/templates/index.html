@@ -8,12 +8,16 @@
     <div id="container">
         <h1>📖 LLM RP</h1>
         <div id="output-container">
-            <div id="output"></div>
+            <div id="output">
+                <div class="progress-bar">
+                    <div class="progress"></div>
+                </div>
+            </div>
         </div>
         <div id="status-container">Compiling...</div>
         <button id="start-button">Start</button>
         <form id="input-form">
-            <input type="text" id="input-command" placeholder="Write action here" required>
+            <input type="text" id="input-command" placeholder="Write action here" required autofocus autocomplete="off">
             <input type="submit" id="send-button" value="Send">
             <button id="reload-button">🗑️</button>
         </form>

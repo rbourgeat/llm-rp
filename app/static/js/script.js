@@ -1,11 +1,13 @@
 var pollingInterval = 10;
 var isRunning = false;
+var rpStarted = false;
+var modelLoading = 0;
 
 function startExecution() {
     if (isRunning) return;
     isRunning = true;
     $('#start-button').prop('disabled', true);
-    $.post('/execute', {command: './llama.cpp/main -m llama.cpp/models/WizardLM-13B-V1.0-Uncensored/ggml-model-q4_0.bin -ngl 1 --repeat_penalty 1.1 --color -i -f prompts/RolePlayV1.txt -r "USER: "'}, function(data) {
+    $.post('/execute', {command: './llama.cpp/main -m llama.cpp/models/WizardLM-13B-V1.0-Uncensored/ggml-model-q4_0.bin -ngl 1 --repeat_penalty 1.1 --color -i -f app/prompts/RolePlayV1.txt -r "USER: "'}, function(data) {
         // Script started successfully
         pollOutput();
     });
@@ -14,12 +16,25 @@ function startExecution() {
 function pollOutput() {
     $.get('/get_output', function(data) {
         var output = data.output;
-        if (output) {
+        if (output && rpStarted) {
             $('#output').append(output);
             $('#output').scrollTop($('#output')[0].scrollHeight);
+            if (modelLoading < 100) {
+                var progressBar = document.querySelector('.progress');
+                modelLoading = 100;
+                progressBar.style.width = String(modelLoading) + '%';
+            }
+        }
+        if (!rpStarted) {
+            var progressBar = document.querySelector('.progress');
+            modelLoading += 0.07;
+            progressBar.style.width = String(modelLoading) + '%';
         }
         if (isRunning) {
             setTimeout(pollOutput, pollingInterval);
+        }
+        if (output.includes("===")) {
+            rpStarted = true;
         }
     });
 }
