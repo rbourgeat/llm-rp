@@ -9,7 +9,7 @@ Your Custom Offline Role Play with AI on Mac and Linux (for now).
 For now:
 - MacOS or Linux
 - Python >= 3.7
-- `pip install Flask gitpython psutil`
+- `pip install flask gitpython psutil`
 
 ## 👉🏻 Start
 
