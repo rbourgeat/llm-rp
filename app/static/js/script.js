@@ -7,7 +7,7 @@ function startExecution() {
     if (isRunning) return;
     isRunning = true;
     $('#start-button').prop('disabled', true);
-    $.post('/execute', {command: './llama.cpp/main -m llama.cpp/models/WizardLM-13B-V1.0-Uncensored/ggml-model-q4_0.bin -ngl 1 --repeat_penalty 1.1 --color -i -f app/prompts/RolePlayV1.txt -r "USER: "'}, function(data) {
+    $.post('/execute', function(data) {
         // Script started successfully
         pollOutput();
     });
