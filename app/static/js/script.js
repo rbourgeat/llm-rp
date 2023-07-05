@@ -33,7 +33,7 @@ function pollOutput() {
         if (isRunning) {
             setTimeout(pollOutput, pollingInterval);
         }
-        if (output.includes("===")) {
+        if (output.includes("<start>")) {
             rpStarted = true;
         }
     });

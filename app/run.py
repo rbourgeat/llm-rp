@@ -14,7 +14,7 @@ from queue import Queue, Empty
 import psutil
 from flask import Flask, render_template, request, jsonify
 import git
-from git import Git
+from git import Git, Repo, GitCommandError
 
 app = Flask(__name__)
 output_queue = Queue()
@@ -140,7 +140,9 @@ def check_llama_cpp():
     exists_13b = os.path.exists(MODEL_13B)
     exists_30b = os.path.exists(MODEL_33B)
     if not exists_7b and not exists_13b and not exists_30b:
-        install_model()
+        install_model_rp()
+    if not os.path.exists("models/stable-diffusion-2-1"):
+        install_model_sd()
 
     filename = 'llama.cpp/main'
     exists = os.path.exists(filename)
@@ -171,7 +173,7 @@ def convert_and_quantize(path):
     subprocess.run(command, shell=True, capture_output=True, text=True, check=True)
 
 
-def install_model():
+def install_model_rp():
     """
     Downloads and installs the appropriate WizardLM model based on the available VRAM.
 
@@ -214,6 +216,39 @@ def install_model():
         convert_and_quantize(folder_path)
 
 
+def install_model_sd():
+    """Downloads and installs Stable Diffusion 2.1.
+
+    Returns:
+        None
+    """
+    try:
+        print("Downloading Stable Diffusion 2.1 model...")
+        repo_url = "https://huggingface.co/apple/coreml-stable-diffusion-2-1-base-palettized"
+        folder_path = "app/models/stable-diffusion-2-1"
+        local_path = "app/models/"
+
+        if os.path.exists(folder_path):
+            shutil.rmtree(folder_path)
+
+        git.Git().clone(repo_url, folder_path)
+        git_repo = git.Git(local_path)
+        git_repo.lfs("fetch")
+        git_repo.checkout("HEAD", "--", ".")
+
+    except GitCommandError as error:
+        print("Error when running Git command:", str(error))
+
+    except OSError as error:
+        print("Error when accessing file or directory:", str(error))
+
+    except Exception as error:
+        print("An error occurred:", str(error))
+
+    else:
+        print(f"Stable Diffusion 2.1 model downloaded here: {folder_path}")
+
+
 def compile_file(filename):
     """
     Compiles the specified file.
@@ -229,6 +264,10 @@ def compile_file(filename):
         elif system == 'Linux':
             print('Build on Linux for CPU')
             bash_command = 'make -C llama.cpp/ clean && make -C llama.cpp/'
+        elif system == 'Windows':
+            print('Build on Windows for CPU')
+            bash_command = 'cd llama.cpp;mkdir build;cd build;cmake ..;\
+                cmake --build . --config Release'
         else:
             print('Running on an unsupported operating system')
             sys.exit()
