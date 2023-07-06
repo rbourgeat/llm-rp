@@ -3,3 +3,6 @@ app/models/*
 
 app/prompts/*
 !app/prompts/RolePlay.txt
+
+app/images/*
+!app/images/*.txt

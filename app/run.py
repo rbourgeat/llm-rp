@@ -14,7 +14,7 @@ from queue import Queue, Empty
 import psutil
 from flask import Flask, render_template, request, jsonify
 import git
-from git import Git, Repo, GitCommandError
+from git import Git, GitCommandError
 
 app = Flask(__name__)
 output_queue = Queue()
@@ -242,11 +242,8 @@ def install_model_sd():
     except OSError as error:
         print("Error when accessing file or directory:", str(error))
 
-    except Exception as error:
-        print("An error occurred:", str(error))
-
-    else:
-        print(f"Stable Diffusion 2.1 model downloaded here: {folder_path}")
+    finally:
+        print("Stable Diffusion 2.1 model downloaded here: ", folder_path)
 
 
 def compile_file(filename):

@@ -47,7 +47,7 @@ import string
 
 
 class CoreMLStableDiffusionPipeline(DiffusionPipeline):
-    """ Core ML version of
+    """Core ML version of
     `diffusers.pipelines.stable_diffusion.pipeline_stable_diffusion.StableDiffusionPipeline`
     """
 
@@ -58,12 +58,14 @@ class CoreMLStableDiffusionPipeline(DiffusionPipeline):
         vae_decoder: CoreMLModel,
         feature_extractor: CLIPFeatureExtractor,
         safety_checker: Optional[CoreMLModel],
-        scheduler: Union[DDIMScheduler,
-                         DPMSolverMultistepScheduler,
-                         EulerAncestralDiscreteScheduler,
-                         EulerDiscreteScheduler,
-                         LMSDiscreteScheduler,
-                         PNDMScheduler],
+        scheduler: Union[
+            DDIMScheduler,
+            DPMSolverMultistepScheduler,
+            EulerAncestralDiscreteScheduler,
+            EulerDiscreteScheduler,
+            LMSDiscreteScheduler,
+            PNDMScheduler,
+        ],
         tokenizer: CLIPTokenizer,
         controlnet: Optional[List[CoreMLModel]],
     ):
@@ -111,8 +113,13 @@ class CoreMLStableDiffusionPipeline(DiffusionPipeline):
             f"Stable Diffusion configured to generate {self.height}x{self.width} images"
         )
 
-    def _encode_prompt(self, prompt, num_images_per_prompt,
-                       do_classifier_free_guidance, negative_prompt):
+    def _encode_prompt(
+        self,
+        prompt,
+        num_images_per_prompt,
+        do_classifier_free_guidance,
+        negative_prompt,
+    ):
         batch_size = len(prompt) if isinstance(prompt, list) else 1
 
         text_inputs = self.tokenizer(
@@ -125,15 +132,17 @@ class CoreMLStableDiffusionPipeline(DiffusionPipeline):
 
         if text_input_ids.shape[-1] > self.tokenizer.model_max_length:
             removed_text = self.tokenizer.batch_decode(
-                text_input_ids[:, self.tokenizer.model_max_length:])
+                text_input_ids[:, self.tokenizer.model_max_length :]
+            )
             logger.warning(
                 "The following part of your input was truncated because CLIP can only handle sequences up to"
-                f" {self.tokenizer.model_max_length} tokens: {removed_text}")
-            text_input_ids = text_input_ids[:, :self.tokenizer.
-                                            model_max_length]
+                f" {self.tokenizer.model_max_length} tokens: {removed_text}"
+            )
+            text_input_ids = text_input_ids[:, : self.tokenizer.model_max_length]
 
         text_embeddings = self.text_encoder(
-            input_ids=text_input_ids.astype(np.float32))["last_hidden_state"]
+            input_ids=text_input_ids.astype(np.float32)
+        )["last_hidden_state"]
 
         if do_classifier_free_guidance:
             uncond_tokens: List[str]
@@ -142,14 +151,16 @@ class CoreMLStableDiffusionPipeline(DiffusionPipeline):
             elif type(prompt) is not type(negative_prompt):
                 raise TypeError(
                     "`negative_prompt` should be the same type to `prompt`, but got {type(negative_prompt)} !="
-                    " {type(prompt)}.")
+                    " {type(prompt)}."
+                )
             elif isinstance(negative_prompt, str):
                 uncond_tokens = [negative_prompt] * batch_size
             elif batch_size != len(negative_prompt):
                 raise ValueError(
                     f"`negative_prompt`: {negative_prompt} has batch size {len(negative_prompt)}, but `prompt`:"
                     f" {prompt} has batch size {batch_size}. Please make sure that passed `negative_prompt` matches"
-                    " the batch size of `prompt`.")
+                    " the batch size of `prompt`."
+                )
             else:
                 uncond_tokens = negative_prompt
 
@@ -163,34 +174,36 @@ class CoreMLStableDiffusionPipeline(DiffusionPipeline):
             )
 
             uncond_embeddings = self.text_encoder(
-                input_ids=uncond_input.input_ids.astype(
-                    np.float32))["last_hidden_state"]
+                input_ids=uncond_input.input_ids.astype(np.float32)
+            )["last_hidden_state"]
 
             # For classifier free guidance, we need to do two forward passes.
             # Here we concatenate the unconditional and text embeddings into a single batch
             # to avoid doing two forward passes
-            text_embeddings = np.concatenate(
-                [uncond_embeddings, text_embeddings])
+            text_embeddings = np.concatenate([uncond_embeddings, text_embeddings])
 
         text_embeddings = text_embeddings.transpose(0, 2, 1)[:, :, None, :]
 
         return text_embeddings
 
-    def run_controlnet(self, 
-                       sample, 
-                       timestep, 
-                       encoder_hidden_states, 
-                       controlnet_cond, 
-                       output_dtype=np.float16):
+    def run_controlnet(
+        self,
+        sample,
+        timestep,
+        encoder_hidden_states,
+        controlnet_cond,
+        output_dtype=np.float16,
+    ):
         if not self.controlnet:
             raise ValueError(
-                "Conditions for controlnet are given but the pipeline has no controlnet modules")
+                "Conditions for controlnet are given but the pipeline has no controlnet modules"
+            )
 
         for i, (module, cond) in enumerate(zip(self.controlnet, controlnet_cond)):
             module_outputs = module(
-                sample=sample.astype(np.float16), 
-                timestep=timestep.astype(np.float16), 
-                encoder_hidden_states=encoder_hidden_states.astype(np.float16), 
+                sample=sample.astype(np.float16),
+                timestep=timestep.astype(np.float16),
+                encoder_hidden_states=encoder_hidden_states.astype(np.float16),
                 controlnet_cond=cond.astype(np.float16),
             )
             if i == 0:
@@ -198,9 +211,9 @@ class CoreMLStableDiffusionPipeline(DiffusionPipeline):
             else:
                 for key in outputs.keys():
                     outputs[key] += module_outputs[key]
-        
+
         outputs = {k: v.astype(output_dtype) for k, v in outputs.items()}
-        
+
         return outputs
 
     def run_safety_checker(self, image):
@@ -211,11 +224,11 @@ class CoreMLStableDiffusionPipeline(DiffusionPipeline):
             )
 
             safety_checker_outputs = self.safety_checker(
-                clip_input=safety_checker_input.pixel_values.astype(
-                    np.float16),
+                clip_input=safety_checker_input.pixel_values.astype(np.float16),
                 images=image.astype(np.float16),
-                adjustment=np.array([0.]).astype(
-                    np.float16),  # defaults to 0 in original pipeline
+                adjustment=np.array([0.0]).astype(
+                    np.float16
+                ),  # defaults to 0 in original pipeline
             )
 
             # Unpack dict
@@ -223,8 +236,7 @@ class CoreMLStableDiffusionPipeline(DiffusionPipeline):
             image = safety_checker_outputs["filtered_images"]
             concept_scores = safety_checker_outputs["concept_scores"]
 
-            logger.info(
-                f"Generated image has nsfw concept={has_nsfw_concept.any()}")
+            logger.info(f"Generated image has nsfw concept={has_nsfw_concept.any()}")
         else:
             has_nsfw_concept = None
 
@@ -238,14 +250,15 @@ class CoreMLStableDiffusionPipeline(DiffusionPipeline):
 
         return image
 
-    def prepare_latents(self,
-                        batch_size,
-                        num_channels_latents,
-                        height,
-                        width,
-                        latents=None):
-        latents_shape = (batch_size, num_channels_latents, self.height // 8,
-                         self.width // 8)
+    def prepare_latents(
+        self, batch_size, num_channels_latents, height, width, latents=None
+    ):
+        latents_shape = (
+            batch_size,
+            num_channels_latents,
+            self.height // 8,
+            self.width // 8,
+        )
         if latents is None:
             latents = np.random.randn(*latents_shape).astype(np.float16)
         elif latents.shape != latents_shape:
@@ -257,11 +270,13 @@ class CoreMLStableDiffusionPipeline(DiffusionPipeline):
 
         return latents
 
-    def prepare_control_cond(self, 
-                             controlnet_cond, 
-                             do_classifier_free_guidance, 
-                             batch_size, 
-                             num_images_per_prompt):
+    def prepare_control_cond(
+        self,
+        controlnet_cond,
+        do_classifier_free_guidance,
+        batch_size,
+        num_images_per_prompt,
+    ):
         processed_cond_list = []
         for cond in controlnet_cond:
             cond = np.stack([cond] * batch_size * num_images_per_prompt)
@@ -273,8 +288,8 @@ class CoreMLStableDiffusionPipeline(DiffusionPipeline):
     def check_inputs(self, prompt, height, width, callback_steps):
         if height != self.height or width != self.width:
             logger.warning(
-                "`height` and `width` dimensions (of the output image tensor) are fixed when exporting the Core ML models " \
-                "unless flexible shapes are used during export (https://coremltools.readme.io/docs/flexible-inputs). " \
+                "`height` and `width` dimensions (of the output image tensor) are fixed when exporting the Core ML models "
+                "unless flexible shapes are used during export (https://coremltools.readme.io/docs/flexible-inputs). "
                 "This pipeline was provided with Core ML models that generate {self.height}x{self.width} images (user requested {height}x{width})"
             )
 
@@ -288,12 +303,14 @@ class CoreMLStableDiffusionPipeline(DiffusionPipeline):
                 f"`height` and `width` have to be divisible by 8 but are {height} and {width}."
             )
 
-        if (callback_steps is None) or (callback_steps is not None and
-                                        (not isinstance(callback_steps, int)
-                                         or callback_steps <= 0)):
+        if (callback_steps is None) or (
+            callback_steps is not None
+            and (not isinstance(callback_steps, int) or callback_steps <= 0)
+        ):
             raise ValueError(
                 f"`callback_steps` has to be a positive integer but is {callback_steps} of type"
-                f" {type(callback_steps)}.")
+                f" {type(callback_steps)}."
+            )
 
     def prepare_extra_step_kwargs(self, eta):
         # prepare extra kwargs for the scheduler step, since not all schedulers have the same signature
@@ -302,7 +319,8 @@ class CoreMLStableDiffusionPipeline(DiffusionPipeline):
         # and should be between [0, 1]
 
         accepts_eta = "eta" in set(
-            inspect.signature(self.scheduler.step).parameters.keys())
+            inspect.signature(self.scheduler.step).parameters.keys()
+        )
         extra_step_kwargs = {}
         if accepts_eta:
             extra_step_kwargs["eta"] = eta
@@ -378,10 +396,12 @@ class CoreMLStableDiffusionPipeline(DiffusionPipeline):
         # 7. Denoising loop
         for i, t in enumerate(self.progress_bar(timesteps)):
             # expand the latents if we are doing classifier free guidance
-            latent_model_input = np.concatenate(
-                [latents] * 2) if do_classifier_free_guidance else latents
-            latent_model_input = self.scheduler.scale_model_input(
-                latent_model_input, t)
+            latent_model_input = (
+                np.concatenate([latents] * 2)
+                if do_classifier_free_guidance
+                else latents
+            )
+            latent_model_input = self.scheduler.scale_model_input(latent_model_input, t)
 
             # controlnet
             if controlnet_cond:
@@ -406,13 +426,15 @@ class CoreMLStableDiffusionPipeline(DiffusionPipeline):
             if do_classifier_free_guidance:
                 noise_pred_uncond, noise_pred_text = np.split(noise_pred, 2)
                 noise_pred = noise_pred_uncond + guidance_scale * (
-                    noise_pred_text - noise_pred_uncond)
+                    noise_pred_text - noise_pred_uncond
+                )
 
             # compute the previous noisy sample x_t -> x_t-1
-            latents = self.scheduler.step(torch.from_numpy(noise_pred),
-                                          t,
-                                          torch.from_numpy(latents),
-                                          **extra_step_kwargs,
+            latents = self.scheduler.step(
+                torch.from_numpy(noise_pred),
+                t,
+                torch.from_numpy(latents),
+                **extra_step_kwargs,
             ).prev_sample.numpy()
 
             # call the callback, if provided
@@ -433,30 +455,37 @@ class CoreMLStableDiffusionPipeline(DiffusionPipeline):
             return (image, has_nsfw_concept)
 
         return StableDiffusionPipelineOutput(
-            images=image, nsfw_content_detected=has_nsfw_concept)
+            images=image, nsfw_content_detected=has_nsfw_concept
+        )
 
 
 def get_available_schedulers():
     schedulers = {}
-    for scheduler in [DDIMScheduler,
-                      DPMSolverMultistepScheduler,
-                      EulerAncestralDiscreteScheduler,
-                      EulerDiscreteScheduler,
-                      LMSDiscreteScheduler,
-                      PNDMScheduler]:
+    for scheduler in [
+        DDIMScheduler,
+        DPMSolverMultistepScheduler,
+        EulerAncestralDiscreteScheduler,
+        EulerDiscreteScheduler,
+        LMSDiscreteScheduler,
+        PNDMScheduler,
+    ]:
         schedulers[scheduler().__class__.__name__.replace("Scheduler", "")] = scheduler
     return schedulers
 
+
 SCHEDULER_MAP = get_available_schedulers()
 
-def get_coreml_pipe(pytorch_pipe,
-                    mlpackages_dir,
-                    model_version,
-                    compute_unit,
-                    delete_original_pipe=True,
-                    scheduler_override=None,
-                    controlnet_models=None):
-    """ Initializes and returns a `CoreMLStableDiffusionPipeline` from an original
+
+def get_coreml_pipe(
+    pytorch_pipe,
+    mlpackages_dir,
+    model_version,
+    compute_unit,
+    delete_original_pipe=True,
+    scheduler_override=None,
+    controlnet_models=None,
+):
+    """Initializes and returns a `CoreMLStableDiffusionPipeline` from an original
     diffusers PyTorch pipeline
     """
     # Ensure `scheduler_override` object is of correct type if specified
@@ -464,12 +493,15 @@ def get_coreml_pipe(pytorch_pipe,
         assert isinstance(scheduler_override, SchedulerMixin)
         logger.warning(
             "Overriding scheduler in pipeline: "
-            f"Default={pytorch_pipe.scheduler}, Override={scheduler_override}")
+            f"Default={pytorch_pipe.scheduler}, Override={scheduler_override}"
+        )
 
     # Gather configured tokenizer and scheduler attributes from the original pipe
     coreml_pipe_kwargs = {
         "tokenizer": pytorch_pipe.tokenizer,
-        "scheduler": pytorch_pipe.scheduler if scheduler_override is None else scheduler_override,
+        "scheduler": pytorch_pipe.scheduler
+        if scheduler_override is None
+        else scheduler_override,
         "feature_extractor": pytorch_pipe.feature_extractor,
     }
 
@@ -479,7 +511,8 @@ def get_coreml_pipe(pytorch_pipe,
     else:
         logger.warning(
             f"Original diffusers pipeline for {model_version} does not have a safety_checker, "
-            "Core ML pipeline will mirror this behavior.")
+            "Core ML pipeline will mirror this behavior."
+        )
         coreml_pipe_kwargs["safety_checker"] = None
 
     if delete_original_pipe:
@@ -495,25 +528,30 @@ def get_coreml_pipe(pytorch_pipe,
             model_version,
             compute_unit,
         )
-        coreml_pipe_kwargs["controlnet"] = [_load_mlpackage_controlnet(
-            mlpackages_dir, 
-            model_version, 
-            compute_unit,
-        ) for model_version in controlnet_models]
+        coreml_pipe_kwargs["controlnet"] = [
+            _load_mlpackage_controlnet(
+                mlpackages_dir,
+                model_version,
+                compute_unit,
+            )
+            for model_version in controlnet_models
+        ]
     else:
         coreml_pipe_kwargs["controlnet"] = None
 
     # Load Core ML models
     logger.info(f"Loading Core ML models in memory from {mlpackages_dir}")
-    coreml_pipe_kwargs.update({
-        model_name: _load_mlpackage(
-            model_name,
-            mlpackages_dir,
-            model_version,
-            compute_unit,
-        )
-        for model_name in model_names_to_load
-    })
+    coreml_pipe_kwargs.update(
+        {
+            model_name: _load_mlpackage(
+                model_name,
+                mlpackages_dir,
+                model_version,
+                compute_unit,
+            )
+            for model_name in model_names_to_load
+        }
+    )
     logger.info("Done.")
 
     logger.info("Initializing Core ML pipe for image generation")
@@ -525,15 +563,14 @@ def get_coreml_pipe(pytorch_pipe,
 
 def generate_random_string(length):
     letters = string.ascii_letters + string.digits  # Include both letters and digits
-    return ''.join(random.choice(letters) for _ in range(length))
+    return "".join(random.choice(letters) for _ in range(length))
 
 
-def get_image_path(args, **override_kwargs):
-    """ mkdir output folder and encode metadata in the filename
-    """
-    out_folder = os.path.join(args.o, "_".join(args.prompt.replace("/", "_").rsplit(" ")))
-    os.makedirs(out_folder, exist_ok=True)
-
+def get_image_path():
+    """mkdir output folder and encode metadata in the filename"""
+    # out_folder = os.path.join(args.o, "_".join(args.prompt.replace("/", "_").rsplit(" ")))
+    # os.makedirs(out_folder, exist_ok=True)
+    out_folder = "app/images/"
     out_fname = generate_random_string(10)
 
     # out_fname = f"randomSeed_{override_kwargs.get('seed', None) or args.seed}"
@@ -546,11 +583,13 @@ def get_image_path(args, **override_kwargs):
 
     return os.path.join(out_folder, out_fname + ".png")
 
+
 def prepare_controlnet_cond(image_path, height, width):
     image = Image.open(image_path).convert("RGB")
     image = image.resize((height, width), resample=Image.LANCZOS)
     image = np.array(image).transpose(2, 0, 1) / 255.0
     return image
+
 
 def main(args):
     logger.info(f"Setting random seed to {args.seed}")
@@ -558,26 +597,33 @@ def main(args):
 
     logger.info("Initializing PyTorch pipe for reference configuration")
     from diffusers import StableDiffusionPipeline
-    pytorch_pipe = StableDiffusionPipeline.from_pretrained(args.model_version,
-                                                           use_auth_token=True)
+
+    pytorch_pipe = StableDiffusionPipeline.from_pretrained(
+        args.model_version, use_auth_token=True
+    )
 
     user_specified_scheduler = None
     if args.scheduler is not None:
-        user_specified_scheduler = SCHEDULER_MAP[
-            args.scheduler].from_config(pytorch_pipe.scheduler.config)
+        user_specified_scheduler = SCHEDULER_MAP[args.scheduler].from_config(
+            pytorch_pipe.scheduler.config
+        )
 
-    coreml_pipe = get_coreml_pipe(pytorch_pipe=pytorch_pipe,
-                                  mlpackages_dir=args.i,
-                                  model_version=args.model_version,
-                                  compute_unit=args.compute_unit,
-                                  scheduler_override=user_specified_scheduler,
-                                  controlnet_models=args.controlnet)
+    coreml_pipe = get_coreml_pipe(
+        pytorch_pipe=pytorch_pipe,
+        mlpackages_dir=args.i,
+        model_version=args.model_version,
+        compute_unit=args.compute_unit,
+        scheduler_override=user_specified_scheduler,
+        controlnet_models=args.controlnet,
+    )
 
     if args.controlnet:
         controlnet_cond = []
         for i, _ in enumerate(args.controlnet):
             image_path = args.controlnet_inputs[i]
-            image = prepare_controlnet_cond(image_path, coreml_pipe.height, coreml_pipe.width)
+            image = prepare_controlnet_cond(
+                image_path, coreml_pipe.height, coreml_pipe.width
+            )
             controlnet_cond.append(image)
     else:
         controlnet_cond = None
@@ -593,7 +639,7 @@ def main(args):
         negative_prompt=args.negative_prompt,
     )
 
-    out_path = get_image_path(args)
+    out_path = get_image_path()
     logger.info(f"Saving generated image to {out_path}")
     image["images"][0].save(out_path)
 
@@ -604,63 +650,85 @@ if __name__ == "__main__":
     parser.add_argument(
         "--prompt",
         required=True,
-        help="The text prompt to be used for text-to-image generation.")
+        help="The text prompt to be used for text-to-image generation.",
+    )
     parser.add_argument(
         "-i",
         required=True,
-        help=("Path to input directory with the .mlpackage files generated by "
-              "python_coreml_stable_diffusion.torch2coreml"))
+        help=(
+            "Path to input directory with the .mlpackage files generated by "
+            "python_coreml_stable_diffusion.torch2coreml"
+        ),
+    )
     parser.add_argument("-o", required=True)
-    parser.add_argument("--seed",
-                        "-s",
-                        default=93,
-                        type=int,
-                        help="Random seed to be able to reproduce results")
+    parser.add_argument(
+        "--seed",
+        "-s",
+        default=93,
+        type=int,
+        help="Random seed to be able to reproduce results",
+    )
     parser.add_argument(
         "--model-version",
         default="CompVis/stable-diffusion-v1-4",
-        help=
-        ("The pre-trained model checkpoint and configuration to restore. "
-         "For available versions: https://huggingface.co/models?search=stable-diffusion"
-         ))
+        help=(
+            "The pre-trained model checkpoint and configuration to restore. "
+            "For available versions: https://huggingface.co/models?search=stable-diffusion"
+        ),
+    )
     parser.add_argument(
         "--compute-unit",
         choices=get_available_compute_units(),
         default="ALL",
-        help=("The compute units to be used when executing Core ML models. "
-              f"Options: {get_available_compute_units()}"))
+        help=(
+            "The compute units to be used when executing Core ML models. "
+            f"Options: {get_available_compute_units()}"
+        ),
+    )
     parser.add_argument(
         "--scheduler",
         choices=tuple(SCHEDULER_MAP.keys()),
         default=None,
-        help=("The scheduler to use for running the reverse diffusion process. "
-             "If not specified, the default scheduler from the diffusers pipeline is utilized"))
+        help=(
+            "The scheduler to use for running the reverse diffusion process. "
+            "If not specified, the default scheduler from the diffusers pipeline is utilized"
+        ),
+    )
     parser.add_argument(
         "--num-inference-steps",
         default=50,
         type=int,
-        help="The number of iterations the unet model will be executed throughout the reverse diffusion process")
+        help="The number of iterations the unet model will be executed throughout the reverse diffusion process",
+    )
     parser.add_argument(
         "--guidance-scale",
         default=7.5,
         type=float,
-        help="Controls the influence of the text prompt on sampling process (0=random images)")
+        help="Controls the influence of the text prompt on sampling process (0=random images)",
+    )
     parser.add_argument(
         "--controlnet",
-        nargs="*", 
+        nargs="*",
         type=str,
-        help=("Enables ControlNet and use control-unet instead of unet for additional inputs. "
-            "For Multi-Controlnet, provide the model names separated by spaces."))
+        help=(
+            "Enables ControlNet and use control-unet instead of unet for additional inputs. "
+            "For Multi-Controlnet, provide the model names separated by spaces."
+        ),
+    )
     parser.add_argument(
         "--controlnet-inputs",
-        nargs="*", 
+        nargs="*",
         type=str,
-        help=("Image paths for ControlNet inputs. "
-            "Please enter images corresponding to each controlnet provided at --controlnet option in same order."))
+        help=(
+            "Image paths for ControlNet inputs. "
+            "Please enter images corresponding to each controlnet provided at --controlnet option in same order."
+        ),
+    )
     parser.add_argument(
         "--negative-prompt",
         default=None,
-        help="The negative text prompt to be used for text-to-image generation.")
+        help="The negative text prompt to be used for text-to-image generation.",
+    )
 
     args = parser.parse_args()
     main(args)
