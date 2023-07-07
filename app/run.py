@@ -18,15 +18,17 @@ import psutil
 from flask import Flask, render_template, request, jsonify
 import git
 from git import Git, GitCommandError
+# pylint: disable=import-error
 from python_coreml_stable_diffusion.pipeline import get_coreml_pipe
 from diffusers import StableDiffusionPipeline
 
 app = Flask(__name__)
 output_queue = Queue()
 input_queue = Queue()
-coreml_pipe = None # pylint: disable=invalid-name
 
 PROCESS = None
+COREML_PIPE = None
+
 MODEL_7B = 'llama.cpp/models/WizardLM-7B-V1.0-Uncensored/ggml-model-q4_0.bin'
 MODEL_13B = 'llama.cpp/models/WizardLM-13B-V1.0-Uncensored/ggml-model-q4_0.bin'
 MODEL_33B = 'llama.cpp/models/WizardLM-33B-V1.0-Uncensored/ggml-model-q4_0.bin'
@@ -335,10 +337,10 @@ def generate_image():
     prompt = request.form['prompt']
 
     # pylint: disable=not-callable
-    image = coreml_pipe(
+    image = COREML_PIPE(
         prompt=prompt,
-        height=coreml_pipe.height,
-        width=coreml_pipe.width,
+        height=COREML_PIPE.height,
+        width=COREML_PIPE.width,
         num_inference_steps=50,
         guidance_scale = 8
     )
@@ -353,14 +355,16 @@ def generate_image():
 def load_stable_diffusion_model():
     """Load the Stable Diffusion model pipeline."""
     print("Loading Stable Diffusion pipeline...")
+    global COREML_PIPE
+
     np.random.seed(42)
     pytorch_pipe = StableDiffusionPipeline.from_pretrained(SD_MODEL_VERSION,
                                                         use_auth_token=True)
      # pylint: disable=redefined-outer-name, unused-variable
-    coreml_pipe = get_coreml_pipe(pytorch_pipe=pytorch_pipe,
+    COREML_PIPE = get_coreml_pipe(pytorch_pipe=pytorch_pipe,
                                 mlpackages_dir="app/models/stable-diffusion-2-1/original/packages",
                                 model_version=SD_MODEL_VERSION,
-                                compute_unit="ALL")
+                                compute_unit="CPU_AND_NE")
     print("Stable Diffusion pipeline loaded !")
 
 
