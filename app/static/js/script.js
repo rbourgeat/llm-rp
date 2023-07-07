@@ -40,6 +40,12 @@ function pollOutput() {
 }
 
 function sendInput() {
+    let output = document.getElementById("output").innerHTML;
+    let prompt = output.slice(-42);
+    $.post('/generate_image', { prompt: prompt }, function(data) {
+        console.log('File created: ', data.file_name);
+    })
+
     var input = $('#input-command').val().trim();
     $('#input-command').val('');
     $.post('/send_input', {input: input});

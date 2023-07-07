@@ -10,20 +10,27 @@ import webbrowser
 import subprocess
 import threading
 import shutil
+import string
 from queue import Queue, Empty
+import random
+import numpy as np
 import psutil
 from flask import Flask, render_template, request, jsonify
 import git
 from git import Git, GitCommandError
+from python_coreml_stable_diffusion.pipeline import get_coreml_pipe
+from diffusers import StableDiffusionPipeline
 
 app = Flask(__name__)
 output_queue = Queue()
 input_queue = Queue()
+coreml_pipe = None # pylint: disable=invalid-name
+
 PROCESS = None
 MODEL_7B = 'llama.cpp/models/WizardLM-7B-V1.0-Uncensored/ggml-model-q4_0.bin'
 MODEL_13B = 'llama.cpp/models/WizardLM-13B-V1.0-Uncensored/ggml-model-q4_0.bin'
 MODEL_33B = 'llama.cpp/models/WizardLM-33B-V1.0-Uncensored/ggml-model-q4_0.bin'
-
+SD_MODEL_VERSION = "stabilityai/stable-diffusion-2-1-base"
 
 @app.route('/')
 def index():
@@ -141,8 +148,10 @@ def check_llama_cpp():
     exists_30b = os.path.exists(MODEL_33B)
     if not exists_7b and not exists_13b and not exists_30b:
         install_model_rp()
-    if not os.path.exists("models/stable-diffusion-2-1"):
+    if not os.path.exists("app/models/stable-diffusion-2-1"):
         install_model_sd()
+    else:
+        threading.Thread(target=load_stable_diffusion_model).start()
 
     filename = 'llama.cpp/main'
     exists = os.path.exists(filename)
@@ -176,9 +185,6 @@ def convert_and_quantize(path):
 def install_model_rp():
     """
     Downloads and installs the appropriate WizardLM model based on the available VRAM.
-
-    Returns:
-        None
     """
     vram = get_vram()
     print(f"Available VRAM: {vram:.2f} GB")
@@ -300,7 +306,64 @@ def get_vram():
     return vram_size_gb
 
 
+def generate_random_name(length):
+    """
+    Generate a random name consisting of lowercase letters.
+
+    Args:
+        length (int): The length of the random name to generate.
+
+    Returns:
+        str: A randomly generated name of the specified length.
+    """
+    letters = string.ascii_lowercase
+    random_name = ''.join(random.choice(letters) for _ in range(length))
+    return random_name
+
+
+@app.route('/generate_image', methods=['POST'])
+def generate_image():
+    """
+    Generate an image based on the provided prompt.
+
+    Args:
+        None
+
+    Returns:
+        A JSON response containing the generated file name.
+    """
+    prompt = request.form['prompt']
+
+    # pylint: disable=not-callable
+    image = coreml_pipe(
+        prompt=prompt,
+        height=coreml_pipe.height,
+        width=coreml_pipe.width,
+        num_inference_steps=50,
+        guidance_scale = 8
+    )
+
+    random_file_name = generate_random_name(10) + '.png'
+
+    image['images'][0].save(str("app/images/" + random_file_name))
+
+    return jsonify({'file_name': random_file_name})
+
+
+def load_stable_diffusion_model():
+    """Load the Stable Diffusion model pipeline."""
+    print("Loading Stable Diffusion pipeline...")
+    np.random.seed(42)
+    pytorch_pipe = StableDiffusionPipeline.from_pretrained(SD_MODEL_VERSION,
+                                                        use_auth_token=True)
+     # pylint: disable=redefined-outer-name, unused-variable
+    coreml_pipe = get_coreml_pipe(pytorch_pipe=pytorch_pipe,
+                                mlpackages_dir="app/models/stable-diffusion-2-1/original/packages",
+                                model_version=SD_MODEL_VERSION,
+                                compute_unit="ALL")
+    print("Stable Diffusion pipeline loaded !")
+
+
 if __name__ == '__main__':
-    input_thread = threading.Thread(target=process_input)
-    input_thread.start()
+    threading.Thread(target=process_input).start()
     app.run()

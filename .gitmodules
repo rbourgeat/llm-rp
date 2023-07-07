@@ -1,3 +1,6 @@
 [submodule "llama.cpp"]
 	path = llama.cpp
 	url = https://github.com/ggerganov/llama.cpp
+[submodule "ml-stable-diffusion"]
+	path = ml-stable-diffusion
+	url = https://github.com/apple/ml-stable-diffusion.git
