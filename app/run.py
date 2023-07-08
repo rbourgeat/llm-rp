@@ -18,6 +18,7 @@ import psutil
 from flask import Flask, render_template, request, jsonify, send_from_directory
 import git
 from git import Git, GitCommandError
+
 # pylint: disable=import-error
 from python_coreml_stable_diffusion.pipeline import get_coreml_pipe
 from diffusers import StableDiffusionPipeline
@@ -27,14 +28,15 @@ output_queue = Queue()
 input_queue = Queue()
 
 PROCESS = None
-coreml_pipe = None # pylint: disable=invalid-name, trailing-whitespace
+coreml_pipe = None  # pylint: disable=invalid-name, trailing-whitespace
 
-MODEL_7B = 'llama.cpp/models/WizardLM-7B-V1.0-Uncensored/ggml-model-q4_0.bin'
-MODEL_13B = 'llama.cpp/models/WizardLM-13B-V1.0-Uncensored/ggml-model-q4_0.bin'
-MODEL_33B = 'llama.cpp/models/WizardLM-33B-V1.0-Uncensored/ggml-model-q4_0.bin'
+MODEL_7B = "llama.cpp/models/WizardLM-7B-V1.0-Uncensored/ggml-model-q4_0.bin"
+MODEL_13B = "llama.cpp/models/WizardLM-13B-V1.0-Uncensored/ggml-model-q4_0.bin"
+MODEL_33B = "llama.cpp/models/WizardLM-33B-V1.0-Uncensored/ggml-model-q4_0.bin"
 SD_MODEL_VERSION = "stabilityai/stable-diffusion-2-1-base"
 
-@app.route('/')
+
+@app.route("/")
 def index():
     """
     Renders the index.html template.
@@ -42,10 +44,10 @@ def index():
     Returns:
         Rendered template.
     """
-    return render_template('index.html')
+    return render_template("index.html")
 
 
-@app.route('/execute', methods=['POST'])
+@app.route("/execute", methods=["POST"])
 def execute():
     """
     Executes a command.
@@ -62,10 +64,10 @@ def execute():
 
     command = ""
     system = platform.system()
-    if system == 'Darwin':
+    if system == "Darwin":
         command = f'./llama.cpp/main -m llama.cpp/models/{model}/ggml-model-q4_0.bin \
             -ngl 1 --repeat_penalty 1.1 --color -i -f app/prompts/RolePlay.txt -r "USER: "'
-    elif system == 'Linux':
+    elif system == "Linux":
         command = f'./llama.cpp/main -m llama.cpp/models/{model}/ggml-model-q4_0.bin \
             --repeat_penalty 1.1 --color -i -f app/prompts/RolePlay.txt -r "USER: "'
     else:
@@ -75,7 +77,7 @@ def execute():
         """
         Runs the script in a separate thread.
         """
-        global PROCESS # pylint: disable=global-statement
+        global PROCESS  # pylint: disable=global-statement
         with subprocess.Popen(
             command,
             shell=True,
@@ -84,29 +86,29 @@ def execute():
             stdin=subprocess.PIPE,
             universal_newlines=True,
         ) as PROCESS:
-            current_word = ''
+            current_word = ""
             while True:
                 char = PROCESS.stdout.read(1)
                 if not char:
                     break
-                if char == '\n':
-                    output_queue.put(current_word + '<br>')
-                    current_word = ''
+                if char == "\n":
+                    output_queue.put(current_word + "<br>")
+                    current_word = ""
                 elif char.isspace():
                     if current_word:
                         output_queue.put(current_word)
-                        output_queue.put(' ')
-                    current_word = ''
+                        output_queue.put(" ")
+                    current_word = ""
                 else:
                     current_word += char
             PROCESS.wait()
 
     thread = threading.Thread(target=run_script)
     thread.start()
-    return jsonify(result='started')
+    return jsonify(result="started")
 
 
-@app.route('/get_output')
+@app.route("/get_output")
 def get_output():
     """
     Retrieves the output from the output queue.
@@ -116,14 +118,14 @@ def get_output():
     """
     try:
         output = output_queue.get(timeout=1.0)
-        if 'USER:' in output:
-            output = ''
+        if "USER:" in output:
+            output = ""
     except Empty:
-        output = ''
+        output = ""
     return jsonify(output=output)
 
 
-@app.route('/send_input', methods=['POST'])
+@app.route("/send_input", methods=["POST"])
 def send_input():
     """
     Sends input to the input queue.
@@ -131,13 +133,13 @@ def send_input():
     Returns:
         JSON response indicating the success of sending the input.
     """
-    input_text = request.form['input']
-    input_queue.put(input_text + '\n')
-    output_queue.put('<p id="user-message">' + input_text + '</p><br>')
-    return jsonify(result='success')
+    input_text = request.form["input"]
+    input_queue.put(input_text + "\n")
+    output_queue.put('<p id="user-message">' + input_text + "</p><br>")
+    return jsonify(result="success")
 
 
-@app.route('/check_llama_cpp', methods=['GET'])
+@app.route("/check_llama_cpp", methods=["GET"])
 def check_llama_cpp():
     """
     Checks if the llama.cpp/main file exists and compiles it if necessary.
@@ -155,7 +157,7 @@ def check_llama_cpp():
     else:
         threading.Thread(target=load_stable_diffusion_model).start()
 
-    filename = 'llama.cpp/main'
+    filename = "llama.cpp/main"
     exists = os.path.exists(filename)
     if not exists:
         compile_file(filename)
@@ -232,7 +234,9 @@ def install_model_sd():
     """
     try:
         print("Downloading Stable Diffusion 2.1 model...")
-        repo_url = "https://huggingface.co/apple/coreml-stable-diffusion-2-1-base-palettized"
+        repo_url = (
+            "https://huggingface.co/apple/coreml-stable-diffusion-2-1-base-palettized"
+        )
         folder_path = "app/models/stable-diffusion-2-1"
         local_path = "app/models/"
 
@@ -261,20 +265,22 @@ def compile_file(filename):
     Args:
         filename: llama.cpp binary.
     """
-    if filename == 'llama.cpp/main':
+    if filename == "llama.cpp/main":
         system = platform.system()
-        if system == 'Darwin':
-            print('Build on macOS with METAL for GPU')
-            bash_command = 'make -C llama.cpp/ clean && LLAMA_METAL=1 make -C llama.cpp/'
-        elif system == 'Linux':
-            print('Build on Linux for CPU')
-            bash_command = 'make -C llama.cpp/ clean && make -C llama.cpp/'
-        elif system == 'Windows':
-            print('Build on Windows for CPU')
-            bash_command = 'cd llama.cpp;mkdir build;cd build;cmake ..;\
-                cmake --build . --config Release'
+        if system == "Darwin":
+            print("Build on macOS with METAL for GPU")
+            bash_command = (
+                "make -C llama.cpp/ clean && LLAMA_METAL=1 make -C llama.cpp/"
+            )
+        elif system == "Linux":
+            print("Build on Linux for CPU")
+            bash_command = "make -C llama.cpp/ clean && make -C llama.cpp/"
+        elif system == "Windows":
+            print("Build on Windows for CPU")
+            bash_command = "cd llama.cpp;mkdir build;cd build;cmake ..;\
+                cmake --build . --config Release"
         else:
-            print('Running on an unsupported operating system')
+            print("Running on an unsupported operating system")
             sys.exit()
         subprocess.run(bash_command, shell=True, check=True, capture_output=True)
 
@@ -283,8 +289,8 @@ def process_input():
     """
     Processes input from the input queue and sends it to the running process.
     """
-    global PROCESS # pylint: disable=global-variable-not-assigned, global-statement
-    webbrowser.open('http://127.0.0.1:5000')
+    global PROCESS  # pylint: disable=global-variable-not-assigned, global-statement
+    webbrowser.open("http://127.0.0.1:5000")
     while True:
         if PROCESS is not None:
             input_text = input_queue.get()
@@ -296,7 +302,7 @@ def get_vram():
     """
     Calculates the available VRAM by subtracting the available system memory
     from the total system memory.
-    
+
     Returns:
         float: Available VRAM in gigabytes (GB).
     """
@@ -304,11 +310,11 @@ def get_vram():
     total_memory = mem_info.total
     ram_size = psutil.virtual_memory().available
     vram_size = total_memory - ram_size
-    vram_size_gb = vram_size / (1024 ** 3)  # Convert bytes to GB
+    vram_size_gb = vram_size / (1024**3)  # Convert bytes to GB
     return vram_size_gb
 
 
-@app.route('/images/<path:filename>')
+@app.route("/images/<path:filename>")
 def get_image(filename):
     """
     Retrieve and serve an image file from the 'images' folder.
@@ -320,7 +326,7 @@ def get_image(filename):
         flask.Response: The image file as a Flask response.
 
     """
-    return send_from_directory('images', filename)
+    return send_from_directory("images", filename)
 
 
 def generate_random_name(length):
@@ -334,11 +340,11 @@ def generate_random_name(length):
         str: A randomly generated name of the specified length.
     """
     letters = string.ascii_lowercase
-    random_name = ''.join(random.choice(letters) for _ in range(length))
+    random_name = "".join(random.choice(letters) for _ in range(length))
     return random_name
 
 
-@app.route('/generate_image', methods=['POST'])
+@app.route("/generate_image", methods=["POST"])
 def generate_image():
     """
     Generate an image based on the provided prompt.
@@ -349,7 +355,7 @@ def generate_image():
     Returns:
         A JSON response containing the generated file name.
     """
-    prompt = request.form['prompt']
+    prompt = request.form["prompt"]
 
     # pylint: disable=not-callable
     image = coreml_pipe(
@@ -357,32 +363,35 @@ def generate_image():
         height=coreml_pipe.height,
         width=coreml_pipe.width,
         num_inference_steps=50,
-        guidance_scale = 8
+        guidance_scale=8,
     )
 
-    random_file_name = generate_random_name(10) + '.png'
+    random_file_name = generate_random_name(10) + ".png"
 
-    image['images'][0].save(str("app/images/" + random_file_name))
+    image["images"][0].save(str("app/images/" + random_file_name))
 
-    return jsonify({'file_name': random_file_name})
+    return jsonify({"file_name": random_file_name})
 
 
 def load_stable_diffusion_model():
     """Load the Stable Diffusion model pipeline."""
     print("Loading Stable Diffusion pipeline...")
-    global coreml_pipe # pylint: disable=global-statement, invalid-name
+    global coreml_pipe  # pylint: disable=global-statement, invalid-name
 
     np.random.seed(42)
-    pytorch_pipe = StableDiffusionPipeline.from_pretrained(SD_MODEL_VERSION,
-                                                        use_auth_token=True)
-     # pylint: disable=redefined-outer-name, unused-variable
-    coreml_pipe = get_coreml_pipe(pytorch_pipe=pytorch_pipe,
-                                mlpackages_dir="app/models/stable-diffusion-2-1/original/packages",
-                                model_version=SD_MODEL_VERSION,
-                                compute_unit="CPU_AND_NE")
+    pytorch_pipe = StableDiffusionPipeline.from_pretrained(
+        SD_MODEL_VERSION, use_auth_token=True
+    )
+    # pylint: disable=redefined-outer-name, unused-variable
+    coreml_pipe = get_coreml_pipe(
+        pytorch_pipe=pytorch_pipe,
+        mlpackages_dir="app/models/stable-diffusion-2-1/original/packages",
+        model_version=SD_MODEL_VERSION,
+        compute_unit="CPU_AND_NE",
+    )
     print("Stable Diffusion pipeline loaded !")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     threading.Thread(target=process_input).start()
     app.run()
