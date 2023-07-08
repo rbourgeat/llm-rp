@@ -1,6 +1,13 @@
 # 📖 LLM RP
 
+<p align="center">
+<a href="https://github.com/psf/black"><img alt="Code style: black" src="https://img.shields.io/badge/code%20style-black-000000.svg"></a>
+<a href="https://github.com/psf/black"><img src="https://github.com/rbourgeat/llm-rp/actions/workflows/pylint.yml/badge.svg"></a>
+</p>
+
+<p align="center">
 Your Custom Offline Role Play with AI on Mac and Linux (for now).
+</p>
 
 ![LLM RP](llm-rp.png)
 
