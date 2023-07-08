@@ -1,0 +1,5 @@
+flask
+gitpython
+psutil
+diffusers
+numpy

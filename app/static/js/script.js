@@ -2,13 +2,13 @@ var pollingInterval = 10;
 var isRunning = false;
 var rpStarted = false;
 var modelLoading = 0;
+var prompt = "";
 
 function startExecution() {
     if (isRunning) return;
     isRunning = true;
     $('#start-button').prop('disabled', true);
     $.post('/execute', function(data) {
-        // Script started successfully
         pollOutput();
     });
 }
@@ -17,6 +17,9 @@ function pollOutput() {
     $.get('/get_output', function(data) {
         var output = data.output;
         if (output && rpStarted) {
+            prompt = prompt + output;
+            if (prompt.length > 200)
+                prompt = prompt.slice(0, prompt.length - output.length).concat(output);
             $('#output').append(output);
             $('#output').scrollTop($('#output')[0].scrollHeight);
             if (modelLoading < 100) {
@@ -39,7 +42,23 @@ function pollOutput() {
     });
 }
 
+
 function sendInput() {
+    var imageContainer = document.getElementById('image-container');
+    var image = document.createElement('img');
+    image.src = '/images/' + "test.png";
+    imageContainer.innerHTML = '';
+    imageContainer.appendChild(image);
+
+    $.post('/generate_image', { prompt: prompt }, function(data) {
+        console.log('File created: ', data.file_name);
+        var imageContainer = document.getElementById('image-container');
+        var image = document.createElement('img');
+        image.src = "/images/" + data.file_name;
+        imageContainer.innerHTML = '';
+        imageContainer.appendChild(image);
+    })
+
     var input = $('#input-command').val().trim();
     $('#input-command').val('');
     $.post('/send_input', {input: input});

@@ -1,0 +1,8 @@
+app/models/*
+!app/models/PUT_MODELS_HERE.txt
+
+app/prompts/*
+!app/prompts/RolePlay.txt
+
+app/images/*
+!app/images/*.txt
