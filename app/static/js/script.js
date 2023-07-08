@@ -36,19 +36,25 @@ function pollOutput() {
         if (isRunning) {
             setTimeout(pollOutput, pollingInterval);
         }
-        if (output.includes("<start>")) {
+        if (output.includes("===")) {
             rpStarted = true;
         }
     });
 }
 
+
 function sendInput() {
-    console.log("prompt: ", prompt)
+    var imageContainer = document.getElementById('image-container');
+    var image = document.createElement('img');
+    image.src = '/images/' + "test.png";
+    imageContainer.innerHTML = '';
+    imageContainer.appendChild(image);
+
     $.post('/generate_image', { prompt: prompt }, function(data) {
         console.log('File created: ', data.file_name);
         var imageContainer = document.getElementById('image-container');
         var image = document.createElement('img');
-        image.src = '../../images/' + data.file_name;
+        image.src = "/images/" + data.file_name;
         imageContainer.innerHTML = '';
         imageContainer.appendChild(image);
     })

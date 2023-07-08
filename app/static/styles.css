@@ -54,15 +54,6 @@ body {
     align-items: center;
 }
 
-#output-container {
-    height: 300px;
-    background-color: #333;
-    border-radius: 25px;
-    margin: 20px;
-    padding: 40px;
-    width: 120%;
-}
-
 #output {
     height: 300px;
     overflow-y: scroll;
@@ -166,4 +157,28 @@ body {
 
 ::-webkit-scrollbar {
   display: none;
+}
+
+img {
+    position: fixed;
+    top: 20px;
+    left: 40%;
+    height: 250px;
+    width: auto;
+    border-radius: 25px;
+}
+
+#output-container {
+    height: 300px;
+    background-color: #333;
+    border-radius: 25px;
+    margin: 20px;
+    padding: 40px;
+    width: 120%;
+}
+
+.title {
+    position: absolute;
+    top: 0;
+    left: 30px;
 }

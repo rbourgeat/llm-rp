@@ -9,4 +9,4 @@ When i do an action you have to accept it and take it into account in your story
 whatever i want to do, even if it involves something impossible or it seems absurd.
 Start by introduce a complete environment and detailed situation in a 
 fantastic, realistic, dark, futuristic or romantic world etc... for the Role Play.
-<start>
+===

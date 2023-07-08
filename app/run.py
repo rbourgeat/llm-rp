@@ -15,7 +15,7 @@ from queue import Queue, Empty
 import random
 import numpy as np
 import psutil
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_from_directory
 import git
 from git import Git, GitCommandError
 # pylint: disable=import-error
@@ -27,7 +27,7 @@ output_queue = Queue()
 input_queue = Queue()
 
 PROCESS = None
-COREML_PIPE = None
+coreml_pipe = None # pylint: disable=invalid-name, trailing-whitespace
 
 MODEL_7B = 'llama.cpp/models/WizardLM-7B-V1.0-Uncensored/ggml-model-q4_0.bin'
 MODEL_13B = 'llama.cpp/models/WizardLM-13B-V1.0-Uncensored/ggml-model-q4_0.bin'
@@ -308,6 +308,21 @@ def get_vram():
     return vram_size_gb
 
 
+@app.route('/images/<path:filename>')
+def get_image(filename):
+    """
+    Retrieve and serve an image file from the 'images' folder.
+
+    Args:
+        filename (str): The name of the image file to retrieve.
+
+    Returns:
+        flask.Response: The image file as a Flask response.
+
+    """
+    return send_from_directory('images', filename)
+
+
 def generate_random_name(length):
     """
     Generate a random name consisting of lowercase letters.
@@ -337,10 +352,10 @@ def generate_image():
     prompt = request.form['prompt']
 
     # pylint: disable=not-callable
-    image = COREML_PIPE(
+    image = coreml_pipe(
         prompt=prompt,
-        height=COREML_PIPE.height,
-        width=COREML_PIPE.width,
+        height=coreml_pipe.height,
+        width=coreml_pipe.width,
         num_inference_steps=50,
         guidance_scale = 8
     )
@@ -355,13 +370,13 @@ def generate_image():
 def load_stable_diffusion_model():
     """Load the Stable Diffusion model pipeline."""
     print("Loading Stable Diffusion pipeline...")
-    global COREML_PIPE
+    global coreml_pipe # pylint: disable=global-statement, invalid-name
 
     np.random.seed(42)
     pytorch_pipe = StableDiffusionPipeline.from_pretrained(SD_MODEL_VERSION,
                                                         use_auth_token=True)
      # pylint: disable=redefined-outer-name, unused-variable
-    COREML_PIPE = get_coreml_pipe(pytorch_pipe=pytorch_pipe,
+    coreml_pipe = get_coreml_pipe(pytorch_pipe=pytorch_pipe,
                                 mlpackages_dir="app/models/stable-diffusion-2-1/original/packages",
                                 model_version=SD_MODEL_VERSION,
                                 compute_unit="CPU_AND_NE")
