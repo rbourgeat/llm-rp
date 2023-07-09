@@ -6,7 +6,7 @@
 </p>
 
 <p align="center">
-Your Custom Offline Role Play with AI on Mac and Linux (for now).
+✨ Your Custom Offline Role Play with AI on Mac and Linux (for now) 🧙‍♂️
 </p>
 
 ![LLM RP](llm-rp.png)
@@ -22,7 +22,8 @@ For now, Mac & Linux:
 
 You can custom global variables at the top of `app/run.py` as you want.
 
-For increase performance, you can reduce the generated images size for exemple.
+For increase performance, you can reduce the generated images size
+(height and)
 
 🖍️ Note: the output images folder is in `app/images/`
 
