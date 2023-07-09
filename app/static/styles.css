@@ -33,17 +33,13 @@
 body {
     background-color: black;
     color: white;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 100vh;
-    margin: 0;
-    padding: 0;
     font-family: 'Roboto', sans-serif;
 }
 
 #container {
+    top: 150px;
+    left: 125px;
+    position: fixed;
     max-width: 600px;
     width: 90%;
     background-color: #222;
@@ -52,6 +48,7 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: center;
 }
 
 #output {
@@ -161,10 +158,9 @@ body {
 
 img {
     position: fixed;
-    top: 20px;
-    left: 40%;
-    height: 250px;
-    width: auto;
+    right: 10px;
+    height: 768px;
+    width: 512px;
     border-radius: 25px;
 }
 
@@ -175,10 +171,4 @@ img {
     margin: 20px;
     padding: 40px;
     width: 120%;
-}
-
-.title {
-    position: absolute;
-    top: 0;
-    left: 30px;
 }
