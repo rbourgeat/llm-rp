@@ -13,27 +13,33 @@ import shutil
 import string
 from queue import Queue, Empty
 import random
-import numpy as np
 import psutil
 from flask import Flask, render_template, request, jsonify, send_from_directory
 import git
-from git import Git, GitCommandError
-
-# pylint: disable=import-error
-from python_coreml_stable_diffusion.pipeline import get_coreml_pipe
-from diffusers import StableDiffusionPipeline
+from git import Git
+import spacy
+from diffusers import DiffusionPipeline, DPMSolverMultistepScheduler
 
 app = Flask(__name__)
 output_queue = Queue()
 input_queue = Queue()
+nlp = spacy.load("en_core_web_sm")
 
 PROCESS = None
-coreml_pipe = None  # pylint: disable=invalid-name, trailing-whitespace
-
 MODEL_7B = "llama.cpp/models/WizardLM-7B-V1.0-Uncensored/ggml-model-q4_0.bin"
 MODEL_13B = "llama.cpp/models/WizardLM-13B-V1.0-Uncensored/ggml-model-q4_0.bin"
 MODEL_33B = "llama.cpp/models/WizardLM-33B-V1.0-Uncensored/ggml-model-q4_0.bin"
-SD_MODEL_VERSION = "stabilityai/stable-diffusion-2-1-base"
+SD_MODEL = "Lykon/DreamShaper"
+SD_HEIGHT = 768
+SD_WIDTH = 512
+
+dpm = DPMSolverMultistepScheduler.from_pretrained(SD_MODEL, subfolder="scheduler")
+
+pipe = DiffusionPipeline.from_pretrained(
+    SD_MODEL, scheduler=dpm, safety_checker=None, requires_safety_checker=False
+)
+pipe = pipe.to("mps")
+pipe.enable_attention_slicing()  # Recommended if your computer has < 64 GB of RAM
 
 
 @app.route("/")
@@ -152,10 +158,6 @@ def check_llama_cpp():
     exists_30b = os.path.exists(MODEL_33B)
     if not exists_7b and not exists_13b and not exists_30b:
         install_model_rp()
-    if not os.path.exists("app/models/stable-diffusion-2-1"):
-        install_model_sd()
-    else:
-        threading.Thread(target=load_stable_diffusion_model).start()
 
     filename = "llama.cpp/main"
     exists = os.path.exists(filename)
@@ -224,38 +226,6 @@ def install_model_rp():
         git_repo.lfs("fetch")
         git_repo.checkout("HEAD", "--", ".")
         convert_and_quantize(folder_path)
-
-
-def install_model_sd():
-    """Downloads and installs Stable Diffusion 2.1.
-
-    Returns:
-        None
-    """
-    try:
-        print("Downloading Stable Diffusion 2.1 model...")
-        repo_url = (
-            "https://huggingface.co/apple/coreml-stable-diffusion-2-1-base-palettized"
-        )
-        folder_path = "app/models/stable-diffusion-2-1"
-        local_path = "app/models/"
-
-        if os.path.exists(folder_path):
-            shutil.rmtree(folder_path)
-
-        git.Git().clone(repo_url, folder_path)
-        git_repo = git.Git(local_path)
-        git_repo.lfs("fetch")
-        git_repo.checkout("HEAD", "--", ".")
-
-    except GitCommandError as error:
-        print("Error when running Git command:", str(error))
-
-    except OSError as error:
-        print("Error when accessing file or directory:", str(error))
-
-    finally:
-        print("Stable Diffusion 2.1 model downloaded here: ", folder_path)
 
 
 def compile_file(filename):
@@ -355,41 +325,57 @@ def generate_image():
     Returns:
         A JSON response containing the generated file name.
     """
-    prompt = request.form["prompt"]
+    global pipe  # pylint: disable=invalid-name, global-variable-not-assigned
 
-    # pylint: disable=not-callable
-    image = coreml_pipe(
-        prompt=prompt,
-        height=coreml_pipe.height,
-        width=coreml_pipe.width,
-        num_inference_steps=50,
-        guidance_scale=8,
+    prompt = request.form["prompt"]
+    keywords = generate_keywords(prompt)
+    filtered_keywords = [
+        keyword
+        for keyword in keywords
+        if (">" not in keyword)
+        and ("<" not in keyword)
+        and ("user" not in keyword)
+        and ("message" not in keyword)
+    ]
+
+    better_prompt = (
+        "((best quality, masterpiece, detailed, realistic, beautiful, \
+        cinematic, intricate details)), "
+        + ", ".join(filtered_keywords)
     )
+    print(better_prompt)
+
+    # First-time "warmup" pass if PyTorch version is 1.13 (see explanation above)
+    _ = pipe(prompt, num_inference_steps=1)
 
     random_file_name = generate_random_name(10) + ".png"
 
-    image["images"][0].save(str("app/images/" + random_file_name))
+    pipe(prompt, height=SD_HEIGHT, width=SD_WIDTH, num_inference_steps=25).images[
+        0
+    ].save(str("app/images/" + random_file_name))
 
     return jsonify({"file_name": random_file_name})
 
 
-def load_stable_diffusion_model():
-    """Load the Stable Diffusion model pipeline."""
-    print("Loading Stable Diffusion pipeline...")
-    global coreml_pipe  # pylint: disable=global-statement, invalid-name
+def generate_keywords(text):
+    """
+    Generate a list of keywords from the given text.
 
-    np.random.seed(42)
-    pytorch_pipe = StableDiffusionPipeline.from_pretrained(
-        SD_MODEL_VERSION, use_auth_token=True
-    )
-    # pylint: disable=redefined-outer-name, unused-variable
-    coreml_pipe = get_coreml_pipe(
-        pytorch_pipe=pytorch_pipe,
-        mlpackages_dir="app/models/stable-diffusion-2-1/original/packages",
-        model_version=SD_MODEL_VERSION,
-        compute_unit="CPU_AND_NE",
-    )
-    print("Stable Diffusion pipeline loaded !")
+    Args:
+        text (str): The input text from which to extract keywords.
+
+    Returns:
+        list: A list of keywords extracted from the text.
+    """
+    global nlp  # pylint: disable=invalid-name, global-variable-not-assigned
+    doc = nlp(text)
+
+    keywords = []
+    for token in doc:
+        if not token.is_stop and not token.is_punct and not token.is_space:
+            keywords.append(token.lemma_.lower())
+
+    return keywords
 
 
 if __name__ == "__main__":

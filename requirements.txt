@@ -2,4 +2,4 @@ flask
 gitpython
 psutil
 diffusers
-numpy
+spacy

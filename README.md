@@ -15,8 +15,8 @@ Your Custom Offline Role Play with AI on Mac and Linux (for now).
 
 For now:
 - Python >= 3.8
-- Mac: `pip install -r requirements.txt && pip install coremltools`
-- Linux: `pip install -r requirements.txt`
+- Mac: `pip install -r requirements.txt && pip install coremltools && python3 -m spacy download en_core_web_sm`
+- Linux: `pip install -r requirements.txt && python3 -m spacy download en_core_web_sm`
 - Install `git lfs`
 
 ## 👉🏻 Start
@@ -29,7 +29,7 @@ python3 app/run.py
 
 The first time you load the app you will wait a while,
 because the program will download, export and quantize 
-the better llama model for your config.
+the better llama model and stable diffusion for your config.
 
 Next open your browser at http://127.0.0.1:5000
 
@@ -40,7 +40,7 @@ You can customize the prompt `prompts/RolePlay.txt`
 ## 📝 Todo
 
 - 💾 Create a persistent role play (with save system)
-- 🖼️ Adding Stable Diffusion
+- 🖼️ Adding Quantized Stable Diffusion
 - 🛠️ Compile for GPU Linux / GPU Windows
 - 🎤 Adding [whisper.cpp](https://github.com/ggerganov/whisper.cpp)
 - 🔉 Adding [Bark](https://github.com/suno-ai/bark) or an other Text-Prompted Generative Audio Model
@@ -51,3 +51,5 @@ You can customize the prompt `prompts/RolePlay.txt`
 
 - [llama.cpp](https://github.com/ggerganov/llama.cpp)
 - [WizardLM](https://huggingface.co/ehartford/)
+- [Stable Diffusion](https://github.com/Stability-AI/stablediffusion)
+- [ML Stable Diffusion](https://github.com/apple/ml-stable-diffusion)

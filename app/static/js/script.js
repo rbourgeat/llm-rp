@@ -18,8 +18,8 @@ function pollOutput() {
         var output = data.output;
         if (output && rpStarted) {
             prompt = prompt + output;
-            if (prompt.length > 200)
-                prompt = prompt.slice(0, prompt.length - output.length).concat(output);
+            if (prompt.length > 300)
+                prompt = prompt.slice(output.length);
             $('#output').append(output);
             $('#output').scrollTop($('#output')[0].scrollHeight);
             if (modelLoading < 100) {
@@ -44,24 +44,17 @@ function pollOutput() {
 
 
 function sendInput() {
-    var imageContainer = document.getElementById('image-container');
-    var image = document.createElement('img');
-    image.src = '/images/' + "test.png";
-    imageContainer.innerHTML = '';
-    imageContainer.appendChild(image);
+    var input = $('#input-command').val().trim();
+    $('#input-command').val('');
+    $.post('/send_input', {input: input});
 
     $.post('/generate_image', { prompt: prompt }, function(data) {
-        console.log('File created: ', data.file_name);
         var imageContainer = document.getElementById('image-container');
         var image = document.createElement('img');
         image.src = "/images/" + data.file_name;
         imageContainer.innerHTML = '';
         imageContainer.appendChild(image);
     })
-
-    var input = $('#input-command').val().trim();
-    $('#input-command').val('');
-    $.post('/send_input', {input: input});
 }
 
 function reloadPage() {
