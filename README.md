@@ -6,7 +6,7 @@
 </p>
 
 <p align="center">
-Your Custom Offline Role Play with AI on Mac and Linux (for now).
+✨ Your Custom Offline Role Play with AI on Mac and Linux (for now) 🧙‍♂️
 </p>
 
 ![LLM RP](llm-rp.png)

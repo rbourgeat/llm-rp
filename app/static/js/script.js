@@ -48,7 +48,7 @@ function sendInput() {
     $('#input-command').val('');
     $.post('/send_input', {input: input});
 
-    $.post('/generate_image', { prompt: prompt }, function(data) {
+    $.post('/generate_image', { prompt: prompt != "" ? prompt : input }, function(data) {
         if (data.error)
             return;
         var imageContainer = document.getElementById('image-container');

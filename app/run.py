@@ -20,13 +20,20 @@ from git import Git
 import spacy
 from diffusers import DiffusionPipeline, DPMSolverMultistepScheduler
 
+#########################################################
+# You can edit the following values:                    #
+SD_MODEL = "Lykon/DreamShaper"  # any HuggingFace model  #
+SD_HEIGHT = 768  # image size                            #
+SD_WIDTH = 512  #
+SD_STEPS = 25  # number of image iteration               #
+CUSTOM = True  # if True, you need to introduce your rp #
+LIGHT_MODE = True  # if True dont check vram and use 7B #
+#########################################################
+
 PROCESS = None
 MODEL_7B = "llama.cpp/models/WizardLM-7B-V1.0-Uncensored/ggml-model-q4_0.bin"
 MODEL_13B = "llama.cpp/models/WizardLM-13B-V1.0-Uncensored/ggml-model-q4_0.bin"
 MODEL_33B = "llama.cpp/models/WizardLM-33B-V1.0-Uncensored/ggml-model-q4_0.bin"
-SD_MODEL = "Lykon/DreamShaper"
-SD_HEIGHT = 768
-SD_WIDTH = 512
 
 system = platform.system()
 app = Flask(__name__)
@@ -68,19 +75,29 @@ def execute():
     """
     global system  # pylint: disable=invalid-name, global-variable-not-assigned
     model = "WizardLM-7B-V1.0-Uncensored"
-    if os.path.exists(MODEL_13B):
+    if os.path.exists(MODEL_13B) and not LIGHT_MODE:
         model = "WizardLM-13B-V1.0-Uncensored"
-    if os.path.exists(MODEL_33B):
+    if os.path.exists(MODEL_33B) and not LIGHT_MODE:
         model = "WizardLM-33B-V1.0-Uncensored"
     print(f"Loading {model} model...")
 
     command = ""
     if system == "Darwin":
-        command = f'./llama.cpp/main -m llama.cpp/models/{model}/ggml-model-q4_0.bin \
-            -ngl 1 --repeat_penalty 1.1 --color -i -f app/prompts/RolePlay.txt -r "USER: "'
+        if CUSTOM:
+            command = f'./llama.cpp/main -m llama.cpp/models/{model}/ggml-model-q4_0.bin \
+                -ngl 1 --repeat_penalty 1.1 --color --interactive-first \
+                -f app/prompts/CustomRolePlay.txt -r "USER: "'
+        else:
+            command = f'./llama.cpp/main -m llama.cpp/models/{model}/ggml-model-q4_0.bin \
+                -ngl 1 --repeat_penalty 1.1 --color -i -f app/prompts/RolePlay.txt -r "USER: "'
     elif system == "Linux":
-        command = f'./llama.cpp/main -m llama.cpp/models/{model}/ggml-model-q4_0.bin \
-            --repeat_penalty 1.1 --color -i -f app/prompts/RolePlay.txt -r "USER: "'
+        if CUSTOM:
+            command = f'./llama.cpp/main -m llama.cpp/models/{model}/ggml-model-q4_0.bin \
+                --repeat_penalty 1.1 --color --interactive-first \
+                -f app/prompts/RolePlay.txt -r "USER: "'
+        else:
+            command = f'./llama.cpp/main -m llama.cpp/models/{model}/ggml-model-q4_0.bin \
+                --repeat_penalty 1.1 --color -i -f app/prompts/RolePlay.txt -r "USER: "'
     else:
         sys.exit()
 
@@ -161,7 +178,9 @@ def check_llama_cpp():
     exists_7b = os.path.exists(MODEL_7B)
     exists_13b = os.path.exists(MODEL_13B)
     exists_30b = os.path.exists(MODEL_33B)
-    if not exists_7b and not exists_13b and not exists_30b:
+    if LIGHT_MODE and not exists_7b:
+        install_model_rp()
+    elif not exists_7b and not exists_13b and not exists_30b:
         install_model_rp()
 
     filename = "llama.cpp/main"
@@ -201,7 +220,7 @@ def install_model_rp():
     print(f"Available VRAM: {vram:.2f} GB")
     print("Downloading WizardLM model...")
     local_path = "llama.cpp/models/"
-    if vram >= 40:
+    if vram >= 40 and not LIGHT_MODE:
         repo_url = "https://huggingface.co/ehartford/WizardLM-33B-V1.0-Uncensored.git"
         folder_path = local_path + "/WizardLM-33B-V1.0-Uncensored"
         if os.path.exists(folder_path):
@@ -211,7 +230,7 @@ def install_model_rp():
         git_repo.lfs("fetch")
         git_repo.checkout("HEAD", "--", ".")
         convert_and_quantize(folder_path)
-    elif vram >= 20:
+    elif vram >= 20 and not LIGHT_MODE:
         repo_url = "https://huggingface.co/ehartford/WizardLM-13B-V1.0-Uncensored.git"
         folder_path = local_path + "/WizardLM-13B-V1.0-Uncensored"
         if os.path.exists(folder_path):
@@ -355,7 +374,7 @@ def generate_image():
     print(better_prompt)
     negative_prompt = "BadDream, UnrealisticDream, deformed iris, deformed pupils,\
         (worst quality, low quality, normal quality:1.2), lowres, blurry, bad hands, bad anatomy\
-            missing fingers, extra digit, fewer digits"
+            bad fingers, bad hands, bad face, ugly"
     print(negative_prompt)
 
     # First-time "warmup" pass if PyTorch version is 1.13 (see explanation above)
@@ -368,7 +387,7 @@ def generate_image():
         negative_prompt=negative_prompt,
         height=SD_HEIGHT,
         width=SD_WIDTH,
-        num_inference_steps=25,
+        num_inference_steps=SD_STEPS,
     ).images[0].save(str("app/images/" + random_file_name))
 
     is_generating_image = False
