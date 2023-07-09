@@ -49,6 +49,8 @@ function sendInput() {
     $.post('/send_input', {input: input});
 
     $.post('/generate_image', { prompt: prompt }, function(data) {
+        if (data.error)
+            return;
         var imageContainer = document.getElementById('image-container');
         var image = document.createElement('img');
         image.src = "/images/" + data.file_name;

@@ -20,11 +20,6 @@ from git import Git
 import spacy
 from diffusers import DiffusionPipeline, DPMSolverMultistepScheduler
 
-app = Flask(__name__)
-output_queue = Queue()
-input_queue = Queue()
-nlp = spacy.load("en_core_web_sm")
-
 PROCESS = None
 MODEL_7B = "llama.cpp/models/WizardLM-7B-V1.0-Uncensored/ggml-model-q4_0.bin"
 MODEL_13B = "llama.cpp/models/WizardLM-13B-V1.0-Uncensored/ggml-model-q4_0.bin"
@@ -33,12 +28,22 @@ SD_MODEL = "Lykon/DreamShaper"
 SD_HEIGHT = 768
 SD_WIDTH = 512
 
-dpm = DPMSolverMultistepScheduler.from_pretrained(SD_MODEL, subfolder="scheduler")
+system = platform.system()
+app = Flask(__name__)
+output_queue = Queue()
+input_queue = Queue()
+is_generating_image = False  # pylint: disable=invalid-name
 
+nlp = spacy.load("en_core_web_sm")
+
+dpm = DPMSolverMultistepScheduler.from_pretrained(SD_MODEL, subfolder="scheduler")
 pipe = DiffusionPipeline.from_pretrained(
     SD_MODEL, scheduler=dpm, safety_checker=None, requires_safety_checker=False
 )
-pipe = pipe.to("mps")
+if system == "Darwin":
+    pipe = pipe.to("mps")
+else:
+    pipe = pipe.to("cuda")
 pipe.enable_attention_slicing()  # Recommended if your computer has < 64 GB of RAM
 
 
@@ -61,6 +66,7 @@ def execute():
     Returns:
         JSON response indicating that the command execution has started.
     """
+    global system  # pylint: disable=invalid-name, global-variable-not-assigned
     model = "WizardLM-7B-V1.0-Uncensored"
     if os.path.exists(MODEL_13B):
         model = "WizardLM-13B-V1.0-Uncensored"
@@ -69,7 +75,6 @@ def execute():
     print(f"Loading {model} model...")
 
     command = ""
-    system = platform.system()
     if system == "Darwin":
         command = f'./llama.cpp/main -m llama.cpp/models/{model}/ggml-model-q4_0.bin \
             -ngl 1 --repeat_penalty 1.1 --color -i -f app/prompts/RolePlay.txt -r "USER: "'
@@ -196,7 +201,7 @@ def install_model_rp():
     print(f"Available VRAM: {vram:.2f} GB")
     print("Downloading WizardLM model...")
     local_path = "llama.cpp/models/"
-    if vram >= 30:
+    if vram >= 40:
         repo_url = "https://huggingface.co/ehartford/WizardLM-33B-V1.0-Uncensored.git"
         folder_path = local_path + "/WizardLM-33B-V1.0-Uncensored"
         if os.path.exists(folder_path):
@@ -206,7 +211,7 @@ def install_model_rp():
         git_repo.lfs("fetch")
         git_repo.checkout("HEAD", "--", ".")
         convert_and_quantize(folder_path)
-    elif vram >= 15:
+    elif vram >= 20:
         repo_url = "https://huggingface.co/ehartford/WizardLM-13B-V1.0-Uncensored.git"
         folder_path = local_path + "/WizardLM-13B-V1.0-Uncensored"
         if os.path.exists(folder_path):
@@ -236,7 +241,6 @@ def compile_file(filename):
         filename: llama.cpp binary.
     """
     if filename == "llama.cpp/main":
-        system = platform.system()
         if system == "Darwin":
             print("Build on macOS with METAL for GPU")
             bash_command = (
@@ -326,6 +330,12 @@ def generate_image():
         A JSON response containing the generated file name.
     """
     global pipe  # pylint: disable=invalid-name, global-variable-not-assigned
+    global is_generating_image  # pylint: disable=invalid-name, global-statement
+
+    if is_generating_image:
+        return jsonify({"error": "Already generating image"})
+
+    is_generating_image = True
 
     prompt = request.form["prompt"]
     keywords = generate_keywords(prompt)
@@ -339,20 +349,29 @@ def generate_image():
     ]
 
     better_prompt = (
-        "((best quality, masterpiece, detailed, realistic, beautiful, \
-        cinematic, intricate details)), "
+        "((best quality, masterpiece, detailed, beautiful, cinematic, intricate details)), "
         + ", ".join(filtered_keywords)
     )
     print(better_prompt)
+    negative_prompt = "BadDream, UnrealisticDream, deformed iris, deformed pupils,\
+        (worst quality, low quality, normal quality:1.2), lowres, blurry, bad hands, bad anatomy\
+            missing fingers, extra digit, fewer digits"
+    print(negative_prompt)
 
     # First-time "warmup" pass if PyTorch version is 1.13 (see explanation above)
     _ = pipe(prompt, num_inference_steps=1)
 
     random_file_name = generate_random_name(10) + ".png"
 
-    pipe(prompt, height=SD_HEIGHT, width=SD_WIDTH, num_inference_steps=25).images[
-        0
-    ].save(str("app/images/" + random_file_name))
+    pipe(
+        prompt,
+        negative_prompt=negative_prompt,
+        height=SD_HEIGHT,
+        width=SD_WIDTH,
+        num_inference_steps=25,
+    ).images[0].save(str("app/images/" + random_file_name))
+
+    is_generating_image = False
 
     return jsonify({"file_name": random_file_name})
 
