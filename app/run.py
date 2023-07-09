@@ -386,8 +386,8 @@ def generate_image():
     )
     print(better_prompt)
     negative_prompt = "BadDream, UnrealisticDream, deformed iris, deformed pupils,\
-        (worst quality, low quality, normal quality:1.2), lowres, blurry, bad hands, bad anatomy\
-            bad fingers, bad hands, bad face, ugly"
+        (worst quality, low quality), lowres, blurry, bad hands, bad anatomy, FastNegativeV2\
+            bad fingers, bad hands, bad face, bad nose, ugly, deformed, easynegative"
     print(negative_prompt)
 
     # First-time "warmup" pass if PyTorch version is 1.13 (see explanation above)
