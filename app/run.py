@@ -20,15 +20,15 @@ from git import Git
 import spacy
 from diffusers import DiffusionPipeline, DPMSolverMultistepScheduler
 
-#########################################################
-# You can edit the following values:                    #
-SD_MODEL = "Lykon/DreamShaper"  # any HuggingFace model  #
-SD_HEIGHT = 768  # image size                            #
-SD_WIDTH = 512  #
-SD_STEPS = 25  # number of image iteration               #
-CUSTOM = True  # if True, you need to introduce your rp #
-LIGHT_MODE = True  # if True dont check vram and use 7B #
-#########################################################
+#############################################################
+# You can edit the following values:
+SD_MODEL = "Lykon/DreamShaper"  # any HuggingFace model
+SD_HEIGHT = 768  # image size
+SD_WIDTH = 512
+SD_STEPS = 25  # number of image iteration
+CUSTOM = False  # if True, you need to introduce your rp
+LIGHT_MODE = False  # if True dont check vram and use 7B model
+##############################################################
 
 PROCESS = None
 MODEL_7B = "llama.cpp/models/WizardLM-7B-V1.0-Uncensored/ggml-model-q4_0.bin"
@@ -44,9 +44,22 @@ is_generating_image = False  # pylint: disable=invalid-name
 nlp = spacy.load("en_core_web_sm")
 
 dpm = DPMSolverMultistepScheduler.from_pretrained(SD_MODEL, subfolder="scheduler")
-pipe = DiffusionPipeline.from_pretrained(
-    SD_MODEL, scheduler=dpm, safety_checker=None, requires_safety_checker=False
-)
+pipe = None  # pylint: disable=invalid-name
+try:
+    pipe = DiffusionPipeline.from_pretrained(
+        SD_MODEL,
+        scheduler=dpm,
+        safety_checker=None,
+        requires_safety_checker=False,
+        local_files_only=True,
+    )
+# pylint: disable=broad-exception-caught
+except Exception as e:
+    print("An error occurred:", str(e))
+    pipe = DiffusionPipeline.from_pretrained(
+        SD_MODEL, scheduler=dpm, safety_checker=None, requires_safety_checker=False
+    )
+
 if system == "Darwin":
     pipe = pipe.to("mps")
 else:
