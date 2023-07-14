@@ -13,6 +13,7 @@ import shutil
 import string
 from queue import Queue, Empty
 import random
+import logging
 import psutil
 from flask import Flask, render_template, request, jsonify, send_from_directory
 import git
@@ -26,11 +27,11 @@ SD_MODEL = "Lykon/DreamShaper"  # any HuggingFace model
 SD_HEIGHT = 768  # image size
 SD_WIDTH = 512
 SD_STEPS = 25  # number of image iteration
-CUSTOM = False  # if True, you need to introduce your rp
 LIGHT_MODE = False  # if True dont check vram and use 7B model
 ##############################################################
 
 PROCESS = None
+CUSTOM = False
 MODEL_7B = "llama.cpp/models/WizardLM-7B-V1.0-Uncensored/ggml-model-q4_0.bin"
 MODEL_13B = "llama.cpp/models/WizardLM-13B-V1.0-Uncensored/ggml-model-q4_0.bin"
 MODEL_33B = "llama.cpp/models/WizardLM-33B-V1.0-Uncensored/ggml-model-q4_0.bin"
@@ -66,6 +67,8 @@ else:
     pipe = pipe.to("cuda")
 pipe.enable_attention_slicing()  # Recommended if your computer has < 64 GB of RAM
 
+werkzeug_logger = logging.getLogger('werkzeug')
+werkzeug_logger.setLevel(logging.ERROR)
 
 @app.route("/")
 def index():
@@ -87,6 +90,12 @@ def execute():
         JSON response indicating that the command execution has started.
     """
     global system  # pylint: disable=invalid-name, global-variable-not-assigned
+    mode = request.form["mode"]
+    if (mode == "custom"):
+        CUSTOM = True
+    else:
+        CUSTOM = False
+
     model = "WizardLM-7B-V1.0-Uncensored"
     if os.path.exists(MODEL_13B) and not LIGHT_MODE:
         model = "WizardLM-13B-V1.0-Uncensored"
@@ -378,6 +387,7 @@ def generate_image():
         and ("<" not in keyword)
         and ("user" not in keyword)
         and ("message" not in keyword)
+        and (len(keyword) > 2)
     ]
 
     better_prompt = (
@@ -387,7 +397,7 @@ def generate_image():
     print(better_prompt)
     negative_prompt = "BadDream, UnrealisticDream, deformed iris, deformed pupils,\
         (worst quality, low quality), lowres, blurry, bad hands, bad anatomy, FastNegativeV2\
-            bad fingers, bad hands, bad face, bad nose, ugly, deformed, easynegative"
+            bad fingers, bad hands, bad face, bad nose, bad mouth, ugly, deformed, easynegative"
     print(negative_prompt)
 
     # First-time "warmup" pass if PyTorch version is 1.13 (see explanation above)

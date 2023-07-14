@@ -4,13 +4,14 @@ var rpStarted = false;
 var modelLoading = 0;
 var prompt = "";
 
-function startExecution() {
+function startExecution(mode) {
     if (isRunning) return;
     isRunning = true;
-    $('#start-button').prop('disabled', true);
-    $.post('/execute', function(data) {
+    $.post('/execute', {mode: mode} , function(data) {
         pollOutput();
     });
+    document.getElementById("start-button-random").remove();
+    document.getElementById("start-button-custom").remove();
 }
 
 function pollOutput() {
@@ -72,10 +73,16 @@ $(document).ready(function() {
         $('#status-container').hide();
     });
 
-    $('#start-button').click(function() {
+    $('#start-button-random').click(function() {
         $(this).hide();
         $('#input-form').show();
-        startExecution();
+        startExecution("random");
+    });
+
+    $('#start-button-custom').click(function() {
+        $(this).hide();
+        $('#input-form').show();
+        startExecution("custom");
     });
 
     $('#input-form').submit(function(event) {

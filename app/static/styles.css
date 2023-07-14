@@ -92,7 +92,7 @@ body {
     cursor: pointer;
 }
 
-#start-button {
+button {
     padding: 10px 20px;
     background-color: #555;
     border: none;
