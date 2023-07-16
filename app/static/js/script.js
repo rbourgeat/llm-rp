@@ -21,6 +21,7 @@ function startExecution() {
 function pollOutput() {
     $.get('/get_output', function(data) {
         var output = data.output;
+        console.log(output)
         if (!rpStarted) {
             var progressBar = document.querySelector('.progress');
             modelLoading += 0.07;
@@ -44,7 +45,7 @@ function pollOutput() {
                 progressBar.style.width = String(modelLoading) + '%';
             }
         }
-        if (output === "[EOS]" && rpStarted) {
+        if ((output === "[EOS]" || output.includes("===")) && rpStarted) {
             $('#input-command').prop('disabled', false);
             $('#input-command').val('');
             $('#send-button').prop('disabled', false);
