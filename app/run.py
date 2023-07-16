@@ -31,7 +31,6 @@ LIGHT_MODE = False  # if True dont check vram and use 7B model
 ##############################################################
 
 PROCESS = None
-CUSTOM = False
 MODEL_7B = "llama.cpp/models/WizardLM-7B-V1.0-Uncensored/ggml-model-q4_0.bin"
 MODEL_13B = "llama.cpp/models/WizardLM-13B-V1.0-Uncensored/ggml-model-q4_0.bin"
 MODEL_33B = "llama.cpp/models/WizardLM-33B-V1.0-Uncensored/ggml-model-q4_0.bin"
@@ -41,6 +40,7 @@ app = Flask(__name__)
 output_queue = Queue()
 input_queue = Queue()
 is_generating_image = False  # pylint: disable=invalid-name
+custom = False  # pylint: disable=invalid-name
 
 nlp = spacy.load("en_core_web_sm")
 
@@ -67,8 +67,9 @@ else:
     pipe = pipe.to("cuda")
 pipe.enable_attention_slicing()  # Recommended if your computer has < 64 GB of RAM
 
-werkzeug_logger = logging.getLogger('werkzeug')
+werkzeug_logger = logging.getLogger("werkzeug")
 werkzeug_logger.setLevel(logging.ERROR)
+
 
 @app.route("/")
 def index():
@@ -91,10 +92,10 @@ def execute():
     """
     global system  # pylint: disable=invalid-name, global-variable-not-assigned
     mode = request.form["mode"]
-    if (mode == "custom"):
-        CUSTOM = True
+    if mode == "custom":  # pylint: disable=simplifiable-if-statement
+        custom = True  # pylint: disable=redefined-outer-name
     else:
-        CUSTOM = False
+        custom = False
 
     model = "WizardLM-7B-V1.0-Uncensored"
     if os.path.exists(MODEL_13B) and not LIGHT_MODE:
@@ -105,7 +106,7 @@ def execute():
 
     command = ""
     if system == "Darwin":
-        if CUSTOM:
+        if custom:
             command = f'./llama.cpp/main -m llama.cpp/models/{model}/ggml-model-q4_0.bin \
                 -ngl 1 --repeat_penalty 1.1 --color --interactive-first \
                 -f app/prompts/CustomRolePlay.txt -r "USER: "'
@@ -113,7 +114,7 @@ def execute():
             command = f'./llama.cpp/main -m llama.cpp/models/{model}/ggml-model-q4_0.bin \
                 -ngl 1 --repeat_penalty 1.1 --color -i -f app/prompts/RolePlay.txt -r "USER: "'
     elif system == "Linux":
-        if CUSTOM:
+        if custom:
             command = f'./llama.cpp/main -m llama.cpp/models/{model}/ggml-model-q4_0.bin \
                 --repeat_penalty 1.1 --color --interactive-first \
                 -f app/prompts/RolePlay.txt -r "USER: "'
@@ -169,7 +170,7 @@ def get_output():
     try:
         output = output_queue.get(timeout=1.0)
         if "USER:" in output:
-            output = ""
+            output = "[EOS]"
     except Empty:
         output = ""
     return jsonify(output=output)

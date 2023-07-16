@@ -57,13 +57,14 @@ body {
     overflow-wrap: break-word;
 }
 
-#input-form, #download-form {
-    width: 100%;
-    text-align: center;
+#input-form {
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 #input-command {
-    width: 70%;
+    width: 400px;
     padding: 10px;
     border: none;
     border-radius: 25px;
@@ -99,7 +100,7 @@ button {
     color: white;
     border-radius: 25px;
     cursor: pointer;
-    margin-bottom: 20px;
+    margin: 0 20px;
 }
 
 #reload-button {
@@ -171,4 +172,10 @@ img {
     margin: 20px;
     padding: 40px;
     width: 120%;
+}
+
+#button-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
