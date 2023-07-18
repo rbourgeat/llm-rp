@@ -39,7 +39,7 @@ The first time you load the app you will wait a while,
 because the program will download, export and quantize 
 the better llama model for your config and install stable diffusion.
 
-Next open your browser at http://127.0.0.1:5000
+Next open your browser at http://127.0.0.1:4242
 
 Click on the 🗑️ for reset le Role Play
 
@@ -60,5 +60,4 @@ You can customize the prompt here: `prompts/RolePlay.txt`
 - [llama.cpp](https://github.com/ggerganov/llama.cpp)
 - [WizardLM](https://huggingface.co/ehartford/)
 - [Diffusers](https://github.com/huggingface/diffusers)
-- [ML Stable Diffusion](https://github.com/apple/ml-stable-diffusion)
 - [DreamShaper](https://huggingface.co/Lykon/DreamShaper)

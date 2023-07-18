@@ -13,6 +13,7 @@ import shutil
 import string
 from queue import Queue, Empty
 import random
+import logging
 import psutil
 from flask import Flask, render_template, request, jsonify, send_from_directory
 import git
@@ -26,7 +27,6 @@ SD_MODEL = "Lykon/DreamShaper"  # any HuggingFace model
 SD_HEIGHT = 768  # image size
 SD_WIDTH = 512
 SD_STEPS = 25  # number of image iteration
-CUSTOM = False  # if True, you need to introduce your rp
 LIGHT_MODE = False  # if True dont check vram and use 7B model
 ##############################################################
 
@@ -40,6 +40,7 @@ app = Flask(__name__)
 output_queue = Queue()
 input_queue = Queue()
 is_generating_image = False  # pylint: disable=invalid-name
+custom = False  # pylint: disable=invalid-name
 
 nlp = spacy.load("en_core_web_sm")
 
@@ -66,6 +67,9 @@ else:
     pipe = pipe.to("cuda")
 pipe.enable_attention_slicing()  # Recommended if your computer has < 64 GB of RAM
 
+werkzeug_logger = logging.getLogger("werkzeug")
+werkzeug_logger.setLevel(logging.ERROR)
+
 
 @app.route("/")
 def index():
@@ -87,6 +91,12 @@ def execute():
         JSON response indicating that the command execution has started.
     """
     global system  # pylint: disable=invalid-name, global-variable-not-assigned
+    mode = request.form["mode"]
+    if mode == "custom":  # pylint: disable=simplifiable-if-statement
+        custom = True  # pylint: disable=redefined-outer-name
+    else:
+        custom = False
+
     model = "WizardLM-7B-V1.0-Uncensored"
     if os.path.exists(MODEL_13B) and not LIGHT_MODE:
         model = "WizardLM-13B-V1.0-Uncensored"
@@ -96,7 +106,7 @@ def execute():
 
     command = ""
     if system == "Darwin":
-        if CUSTOM:
+        if custom:
             command = f'./llama.cpp/main -m llama.cpp/models/{model}/ggml-model-q4_0.bin \
                 -ngl 1 --repeat_penalty 1.1 --color --interactive-first \
                 -f app/prompts/CustomRolePlay.txt -r "USER: "'
@@ -104,14 +114,15 @@ def execute():
             command = f'./llama.cpp/main -m llama.cpp/models/{model}/ggml-model-q4_0.bin \
                 -ngl 1 --repeat_penalty 1.1 --color -i -f app/prompts/RolePlay.txt -r "USER: "'
     elif system == "Linux":
-        if CUSTOM:
+        if custom:
             command = f'./llama.cpp/main -m llama.cpp/models/{model}/ggml-model-q4_0.bin \
                 --repeat_penalty 1.1 --color --interactive-first \
-                -f app/prompts/RolePlay.txt -r "USER: "'
+                -f app/prompts/CustomRolePlay.txt -r "USER: "'
         else:
             command = f'./llama.cpp/main -m llama.cpp/models/{model}/ggml-model-q4_0.bin \
                 --repeat_penalty 1.1 --color -i -f app/prompts/RolePlay.txt -r "USER: "'
     else:
+        print("LLM RP don't work on this computer.")
         sys.exit()
 
     def run_script():
@@ -160,7 +171,7 @@ def get_output():
     try:
         output = output_queue.get(timeout=1.0)
         if "USER:" in output:
-            output = ""
+            output = "[EOS]"
     except Empty:
         output = ""
     return jsonify(output=output)
@@ -296,7 +307,8 @@ def process_input():
     Processes input from the input queue and sends it to the running process.
     """
     global PROCESS  # pylint: disable=global-variable-not-assigned, global-statement
-    webbrowser.open("http://127.0.0.1:5000")
+    print("Open browser at: http://127.0.0.1:4242")
+    webbrowser.open("http://127.0.0.1:4242")
     while True:
         if PROCESS is not None:
             input_text = input_queue.get()
@@ -378,6 +390,7 @@ def generate_image():
         and ("<" not in keyword)
         and ("user" not in keyword)
         and ("message" not in keyword)
+        and (len(keyword) > 2)
     ]
 
     better_prompt = (
@@ -387,7 +400,7 @@ def generate_image():
     print(better_prompt)
     negative_prompt = "BadDream, UnrealisticDream, deformed iris, deformed pupils,\
         (worst quality, low quality), lowres, blurry, bad hands, bad anatomy, FastNegativeV2\
-            bad fingers, bad hands, bad face, bad nose, ugly, deformed, easynegative"
+            bad fingers, bad hands, bad face, bad nose, bad mouth, ugly, deformed, easynegative"
     print(negative_prompt)
 
     # First-time "warmup" pass if PyTorch version is 1.13 (see explanation above)
@@ -431,4 +444,4 @@ def generate_keywords(text):
 
 if __name__ == "__main__":
     threading.Thread(target=process_input).start()
-    app.run()
+    app.run(port=4242)

@@ -10,3 +10,4 @@ whatever i want to do, even if it involves something impossible or it seems absu
 Start by introduce a complete environment and detailed situation compared 
 to the description that I am going to give you.
 ===
+The context: 
