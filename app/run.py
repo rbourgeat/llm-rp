@@ -117,11 +117,12 @@ def execute():
         if custom:
             command = f'./llama.cpp/main -m llama.cpp/models/{model}/ggml-model-q4_0.bin \
                 --repeat_penalty 1.1 --color --interactive-first \
-                -f app/prompts/RolePlay.txt -r "USER: "'
+                -f app/prompts/CustomRolePlay.txt -r "USER: "'
         else:
             command = f'./llama.cpp/main -m llama.cpp/models/{model}/ggml-model-q4_0.bin \
                 --repeat_penalty 1.1 --color -i -f app/prompts/RolePlay.txt -r "USER: "'
     else:
+        print("LLM RP don't work on this computer.")
         sys.exit()
 
     def run_script():
@@ -306,7 +307,8 @@ def process_input():
     Processes input from the input queue and sends it to the running process.
     """
     global PROCESS  # pylint: disable=global-variable-not-assigned, global-statement
-    webbrowser.open("http://127.0.0.1:5000")
+    print("Open browser at: http://127.0.0.1:4242")
+    webbrowser.open("http://127.0.0.1:4242")
     while True:
         if PROCESS is not None:
             input_text = input_queue.get()
@@ -442,4 +444,4 @@ def generate_keywords(text):
 
 if __name__ == "__main__":
     threading.Thread(target=process_input).start()
-    app.run()
+    app.run(port=4242)

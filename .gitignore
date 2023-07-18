@@ -4,3 +4,5 @@ app/prompts/*
 
 app/images/*
 !app/images/*.txt
+
+.DS_Store
